@@ -220,7 +220,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 // CONFIG — paste your Google Apps Script Web App URL here
 // (see SETUP.md for instructions)
 // ══════════════════════════════════════════════════════════════
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxtBm6pogn7exZ-bs0fe18f_NtSl_-TeMaSkiHaGx5x3uGioHIaHGAvmtDoQpg8onR6hQ/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzw-KLVUK6R7vMXz5GqOX0oyq1AiwSIY63u5ozaaJPpi_ayKiQVuEBXVkaYdyL-BwGavg/exec";
 // ══════════════════════════════════════════════════════════════
 
 
@@ -519,6 +519,7 @@ function buildResults(){
   const sorted=Object.keys(DIMS).filter(d=>maxP[d]>0).sort((a,b)=>pct[b]-pct[a]);
   const flags=calcFlags();
   const sibLabel={only:'Only child',eldest:'Eldest',middle:'Middle sibling',youngest:'Youngest',two_e:'Older of two',two_y:'Younger of two'}[sib];
+  const insights=deriveInsights(pct,flags,sib);
 
   document.getElementById('resEyebrow').textContent=sibLabel;
   document.getElementById('resSub').textContent='Derived from how you said you would behave across '+QS.length+' questions. The patterns below were invisible during the test.';
@@ -544,7 +545,7 @@ function buildResults(){
   }).join('');
   document.getElementById('recapBody').innerHTML=rows;
 
-  window._RD={sorted,pct,flags,sibLabel};
+  window._RD={sorted,pct,flags,sibLabel,insights};
   showScreen('results');
   setTimeout(()=>{document.querySelectorAll('.dim-bar').forEach(b=>{b.style.width=b.dataset.w+'%';});},150);
 }
@@ -571,6 +572,74 @@ function calcFlags(){
   return fl;
 }
 
+function avg(vals){
+  return Math.round(vals.reduce((sum,v)=>sum+v,0)/vals.length);
+}
+
+function clampPct(v){
+  return Math.max(0,Math.min(100,Math.round(v)));
+}
+
+function inv(pct,key){
+  return 100-(pct[key]||0);
+}
+
+function deriveInsights(pct,flags,sibKey){
+  const strengthPool=[
+    {name:'Groundedness',score:avg([pct.secure||0,inv(pct,'guilt'),inv(pct,'approval')])},
+    {name:'Boundaries',score:avg([pct.self_advocacy||0,inv(pct,'martyrdom'),inv(pct,'conflict_avoid')])},
+    {name:'Diplomacy',score:avg([pct.mediator||0,pct.self_advocacy||0,inv(pct,'withdrawal')])},
+    {name:'Self-reflection',score:avg([inv(pct,'awareness'),pct.secure||0,inv(pct,'withdrawal')])},
+    {name:'Flexibility',score:avg([inv(pct,'control'),inv(pct,'enmeshment'),pct.secure||0])},
+    {name:'Emotional steadiness',score:avg([inv(pct,'guilt'),inv(pct,'withdrawal'),pct.secure||0])},
+    {name:'Relational independence',score:avg([inv(pct,'approval'),inv(pct,'enmeshment'),pct.self_advocacy||0])},
+    {name:'Collaborative leadership',score:avg([pct.self_advocacy||0,pct.mediator||0,inv(pct,'control')])}
+  ].map(item=>({...item,score:clampPct(item.score)}))
+   .sort((a,b)=>b.score-a.score)
+   .slice(0,5);
+
+  const toxicPatterns=flags.map(f=>f.name);
+  const pushPattern=(name,condition)=>{
+    if(condition && !toxicPatterns.includes(name)) toxicPatterns.push(name);
+  };
+  pushPattern('Approval-driven decisions',(pct.approval||0)>=55);
+  pushPattern('Conflict shutdown',(pct.conflict_avoid||0)>=55);
+  pushPattern('Over-functioning for others',(pct.martyrdom||0)>=50||(pct.identity_usefulness||0)>=50);
+  pushPattern('Family-role carryover',(pct.enmeshment||0)>=50);
+  pushPattern('Control as safety',(pct.control||0)>=55);
+  pushPattern('Withdrawal under stress',(pct.withdrawal||0)>=55);
+  pushPattern('High guilt load',(pct.guilt||0)>=60);
+
+  const commonExperiences=[];
+  const pushExperience=(label,condition)=>{
+    if(condition && !commonExperiences.includes(label)) commonExperiences.push(label);
+  };
+  pushExperience('Often felt responsible for other people’s emotional state',(pct.guilt||0)>=55||(pct.mediator||0)>=55);
+  pushExperience('Learned early that being useful kept you connected',(pct.identity_usefulness||0)>=45||(pct.martyrdom||0)>=45);
+  pushExperience('Family approval still carries emotional weight',(pct.approval||0)>=45);
+  pushExperience('Silence felt safer than direct expression',(pct.withdrawal||0)>=45||(pct.conflict_avoid||0)>=45);
+  pushExperience('Childhood family role still shows up in adult relationships',(pct.enmeshment||0)>=45);
+  pushExperience('Receiving care can feel harder than giving it',(flags.some(f=>f.name==='Difficulty receiving care')));
+  pushExperience('Achievement can become a way to secure love or recognition',(flags.some(f=>f.name==='Unresolved family approval hunger')));
+  pushExperience('Helping can slide into over-responsibility',(flags.some(f=>f.name==='Control through helpfulness')||flags.some(f=>f.name==='Identity built on usefulness')));
+
+  const siblingExperiences={
+    only:'Pressure to be self-contained and emotionally older than your years',
+    eldest:'Pressure to be responsible, composed, and somewhat ahead of everyone else',
+    middle:'Feeling overlooked, adaptable, or cast as the in-between regulator',
+    youngest:'Being read as less serious while still reacting strongly to family dynamics',
+    two_e:'Carrying a quiet leadership role within a small sibling system',
+    two_y:'Learning to negotiate attention, comparison, and dependence in a two-child dynamic'
+  };
+  pushExperience(siblingExperiences[sibKey],Boolean(siblingExperiences[sibKey]));
+
+  return{
+    strengths: strengthPool,
+    toxicPatterns,
+    commonExperiences: commonExperiences.slice(0,8)
+  };
+}
+
 // ── SUBMIT ────────────────────────────────────────────────────
 function buildReport(){
   const d=window._RD;
@@ -578,6 +647,9 @@ function buildReport(){
   const email=document.getElementById('emailInput').value.trim()||'anonymous';
   const dimLines=d.sorted.map(k=>`  ${DIMS[k].label}: ${d.pct[k]}%\n  → ${DIMS[k].desc}`).join('\n\n');
   const flagLines=d.flags.map(f=>`[${f.name}]\n${f.text}`).join('\n\n---\n\n');
+  const strengthLines=d.insights.strengths.map(s=>`  ${s.name}: ${s.score}%`).join('\n');
+  const toxicLines=d.insights.toxicPatterns.map(t=>`  - ${t}`).join('\n');
+  const experienceLines=d.insights.commonExperiences.map(t=>`  - ${t}`).join('\n');
   const sceneLines=QS.filter(q=>q.type==='scene').map((q,i)=>{
     const c=sceneAns[q.id]??null,dim=c!==null?q.dims[c]:'—',dl=DIMS[dim]?DIMS[dim].label:'—';
     const at=c!==null?`${String.fromCharCode(65+c)}. ${q.opts[c]}`:'(skipped)';
@@ -596,6 +668,18 @@ Respondent email : ${email}
 ━━━ DIMENSION SCORES ━━━━━━━━━━━━━━━━━━
 
 ${dimLines}
+
+━━━ STRENGTHS ━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${strengthLines}
+
+━━━ TOXIC PATTERNS ━━━━━━━━━━━━━━━━━━━━━
+
+${toxicLines}
+
+━━━ COMMON EXPERIENCES ━━━━━━━━━━━━━━━━━
+
+${experienceLines}
 
 ━━━ INDIRECT PATTERN SIGNALS ━━━━━━━━━━
 
@@ -623,7 +707,23 @@ async function submitResults(){
   const {notes,email,report}=buildReport();
   const topDims=d.sorted.slice(0,5).map(k=>DIMS[k].label+' ('+d.pct[k]+'%)').join(', ');
   const flagNames=d.flags.map(f=>f.name).join('; ');
-  const dateStr=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  const flagDetails=d.flags.map(f=>`${f.name}: ${f.text}`).join(' || ');
+  const strengthsSummary=d.insights.strengths.map(s=>`${s.name} (${s.score}%)`).join('; ');
+  const toxicPatterns=d.insights.toxicPatterns.join('; ');
+  const commonExperiences=d.insights.commonExperiences.join('; ');
+  const allDimensionScores=Object.keys(DIMS).map(k=>`${DIMS[k].label} (${d.pct[k]||0}%)`).join('; ');
+  const questionBreakdown=QS.map((q,i)=>{
+    if(q.type==='scene'){
+      const c=sceneAns[q.id]??null,answer=c!==null?`${String.fromCharCode(65+c)}. ${q.opts[c]}`:'(skipped)';
+      const dim=c!==null&&DIMS[q.dims[c]]?DIMS[q.dims[c]].label:'—';
+      return `Q${i+1} [${q.sec}] ${dim} -> ${answer}`;
+    }
+    return q.statements.map(st=>{
+      const sv=likertAns[st.id];
+      const dim=st.dims[0]&&DIMS[st.dims[0]]?DIMS[st.dims[0]].label:'—';
+      return `Q${i+1} "${st.text}" [${dim}] -> ${sv?sv.v+'/5':'(skipped)'}`;
+    }).join(' || ');
+  }).join('\n');
 
   // Build the payload — no name, no identifying info
   const payload={
@@ -631,8 +731,14 @@ async function submitResults(){
     "Submission date":  new Date().toISOString().split('T')[0],
     "Respondent email": email, // "anonymous" if not provided
     "Top dimensions":   topDims,
+    "All dimension scores": allDimensionScores,
+    "Strengths":        strengthsSummary,
+    "Toxic patterns":   toxicPatterns,
+    "Common experiences": commonExperiences,
     "Pattern flags":    flagNames,
+    "Pattern flag details": flagDetails,
     "Additional notes": notes,
+    "Question breakdown": questionBreakdown,
     "Full report":      report
   };
   // Individual dimension scores
