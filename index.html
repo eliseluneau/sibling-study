@@ -513,7 +513,10 @@ function pickLikert(stId,v,dims,ws,dir=[]){
 function currentQuestionAnswered(){
   const q=QS[cur];
   if(q.type==='scene') return sceneAns[q.id]!==undefined && sceneAns[q.id]!==null;
-  return q.statements.every(st=>likertAns[st.id]?.v!==undefined && likertAns[st.id]?.v!==null);
+  return q.statements.every(st=>
+    (likertAns[st.id]?.v!==undefined && likertAns[st.id]?.v!==null) ||
+    !!document.querySelector(`input[name="${st.id}"]:checked`)
+  );
 }
 
 async function goNext(){
