@@ -570,20 +570,79 @@ async function buildResults(){
 function calcFlags(pct={},responseStyle={guardedness:0}){
   const sa=k=>sceneAns[k]??null,lv=id=>likertAns[id]?.v??null;
   const fl=[];
-  if((sa(0)===0||sa(0)===4)||(sa(16)===3)||(lv('L01')>=4))
-    fl.push({name:'Silent resentment loop',text:'Across multiple questions, you absorbed effort, felt the sting, and said nothing. The feeling was real; the response was silence. This pattern is most common in people who learned early that suppression was safer than expression — and who came to mistake silence for strength.'});
-  if((sa(1)===2||sa(1)===4)||(sa(26)===0||sa(26)===3)||(lv('L03')<=2))
-    fl.push({name:'Identity built on usefulness',text:"Multiple answers suggest your sense of self becomes unstable when you are not solving, caring for, or organising something. Being needed may be structural to how you know you exist. This reads, from the outside, as generosity. From the inside it can feel like a compulsion you didn't choose."});
-  if((sa(10)===1||sa(10)===4)||(lv('L11')>=4))
-    fl.push({name:'Unresolved family approval hunger',text:"Your family's recognition — or lack of it — carries weight disproportionate to how you'd like it to. The adult version often shows up as performing achievement toward an absent, imaginary audience: doing things to prove something to people who may no longer be watching."});
-  if((sa(6)===0||sa(6)===2)||(sa(7)===3)||(lv('L07')>=4&&lv('L09')>=4))
-    fl.push({name:'Control through helpfulness',text:"You tend to take over, redo, or steer — often genuinely wanting to help, but also unable to tolerate outcomes you don't author. From the inside it feels like care. From the outside it can feel like a lack of trust."});
-  if((sa(22)===1||sa(22)===4)||(lv('L23')<=2))
-    fl.push({name:'Difficulty receiving care',text:"You are more comfortable giving than receiving — and when someone tries to care for you, something closes. This shows up as deflection, self-sufficiency framed as strength, or discomfort with intimacy directed at you. The armour may have been necessary once."});
-  if((sa(15)===0||sa(15)===4)||(lv('L16')>=4&&lv('L18')>=4))
-    fl.push({name:'Automatic guilt activation',text:"Your guilt fires quickly and persists longer than the situation warrants. Across several questions, guilt was present even when you made the right call — suggesting it operates more like a reflex than a moral signal. This often develops in people made responsible for others' emotions early in life."});
-  if((sa(12)===1||sa(12)===2)||(lv('L13')>=4&&lv('L14')>=4))
-    fl.push({name:'Family role enmeshment',text:"In multiple questions, your family-of-origin context pulled you back into an older version of yourself — and part of you found it comfortable. The role assigned to you in childhood is still active. Knowing this intellectually and escaping it behaviourally are very different things."});
+  const push=(name,text,score)=>{ if(score>=2 && !fl.some(f=>f.name===name)) fl.push({name,text}); };
+
+  push(
+    'Silent resentment loop',
+    'Across multiple questions, you absorbed effort, felt the sting, and said nothing. The feeling was real; the response was silence. This pattern often appears when suppression felt safer than expression for a long time.',
+    ((pct.martyrdom||0)>=40?1:0)+((pct.withdrawal||0)>=40?1:0)+((sa(0)===0||sa(0)===4)?1:0)+(flagsLike('resentment'))
+  );
+
+  push(
+    'Identity built on usefulness',
+    "Multiple answers suggest your sense of self becomes less steady when you are not solving, organising, or being needed. From the outside this can look like generosity; from the inside it can feel closer to compulsion.",
+    ((pct.identity_usefulness||0)>=35?1:0)+((pct.martyrdom||0)>=35?1:0)+((sa(26)===0||sa(26)===3)?1:0)+((sa(29)===1)?1:0)
+  );
+
+  push(
+    'Unresolved family approval hunger',
+    "Your family's recognition still appears to carry more emotional weight than you'd like. The adult version often shows up as performing competence, goodness, or achievement toward an internal audience that may no longer be speaking aloud.",
+    ((pct.approval||0)>=42?1:0)+((pct.enmeshment||0)>=38?1:0)+((sa(10)===1||sa(10)===4)?1:0)+(lv('L11')>=4?1:0)
+  );
+
+  push(
+    'Control through helpfulness',
+    "You tend to take over, redo, or quietly steer outcomes under the banner of being useful. The behaviour may be genuinely caring, but it also seems to regulate anxiety and uncertainty.",
+    ((pct.control||0)>=40?1:0)+((pct.martyrdom||0)>=32?1:0)+((sa(6)===0||sa(6)===2||sa(7)===3)?1:0)+((lv('L07')>=4&&lv('L09')>=4)?1:0)
+  );
+
+  push(
+    'Difficulty receiving care',
+    "You seem more comfortable giving than receiving. When care is directed at you, something in the system tightens: deflection, self-sufficiency, minimising, or discomfort with depending on someone else.",
+    ((pct.withdrawal||0)>=35?1:0)+((pct.secure||0)<=28?1:0)+((sa(22)===1||sa(22)===4)?1:0)+(lv('L23')<=2?1:0)
+  );
+
+  push(
+    'Automatic guilt activation',
+    "Your guilt appears to fire quickly and linger beyond the facts of the situation. It behaves less like a clean moral signal and more like a reflex linked to responsibility and relational tension.",
+    ((pct.guilt||0)>=45?1:0)+((sa(15)===0||sa(15)===4)?1:0)+((lv('L16')>=4&&lv('L18')>=4)?1:0)
+  );
+
+  push(
+    'Family role enmeshment',
+    "Your family-of-origin context still seems to pull you back into an older role. Knowing that intellectually is one thing; the data here suggests it is still active behaviourally.",
+    ((pct.enmeshment||0)>=42?1:0)+((sa(12)===1||sa(12)===2)?1:0)+((lv('L13')>=4&&lv('L14')>=4)?1:0)
+  );
+
+  push(
+    'Conflict shutdown',
+    "When tension rises, your system appears to prefer indirect management over open confrontation. The result is often delay, silence, mood signalling, or retreat rather than clear engagement.",
+    ((pct.conflict_avoid||0)>=42?1:0)+((pct.withdrawal||0)>=38?1:0)+((sa(4)===1||sa(4)===2)?1:0)+(lv('L24')>=4?1:0)
+  );
+
+  push(
+    'Over-functioning identity',
+    "You often become the organiser, holder, fixer, or emotional infrastructure in a system. The pattern is not just that you help; it is that other people begin to rely on you staying that person.",
+    ((pct.martyrdom||0)>=38?1:0)+((pct.identity_usefulness||0)>=35?1:0)+((pct.enmeshment||0)>=38?1:0)+((lv('L13')>=4||lv('L22')>=4)?1:0)
+  );
+
+  push(
+    'Recognition sensitivity',
+    "Recognition appears to matter not just because praise feels good, but because being overlooked lands as something deeper: erasure, invisibility, or the familiar feeling of carrying more than was seen.",
+    ((pct.approval||0)>=42?1:0)+((pct.martyrdom||0)>=35?1:0)+((sa(24)===4)?1:0)+(lv('L26')>=4?1:0)
+  );
+
+  push(
+    'Role fatigue',
+    "There are signs that the role you learned to play still works, but also costs you. What shows up here is not only competence but tiredness: the strain of being the one who absorbs, anticipates, or holds.",
+    ((pct.enmeshment||0)>=38?1:0)+((pct.guilt||0)>=42?1:0)+((pct.martyrdom||0)>=38?1:0)+((sa(13)===3||sa(16)===3)?1:0)
+  );
+
+  function flagsLike(kind){
+    if(kind==='resentment') return ((sa(21)===4||sa(24)===4)?1:0);
+    return 0;
+  }
+
   if(responseStyle.guardedness>=3)
     fl.push({name:'Self-protective responding',text:"Some of your direct self-descriptions were more composed than your situational choices. When that happens, the interpretation leans more heavily on the indirect and relational questions, which are usually harder to curate."});
   if((responseStyle.neutralCount||0)>=6)
@@ -684,24 +743,159 @@ function inv(pct,key){
   return 100-(pct[key]||0);
 }
 
+function siblingPatternEvidence(pct,flags,responseStyle={}){
+  return{
+    eldest:{
+      'Perfectionism': ((pct.control||0)>=48?1:0)+((pct.guilt||0)>=48?1:0)+((pct.approval||0)>=45?1:0),
+      'Parentification': ((pct.enmeshment||0)>=45?1:0)+((pct.martyrdom||0)>=42?1:0)+((pct.guilt||0)>=45?1:0),
+      'Control issues': ((pct.control||0)>=48?1:0)+((pct.self_advocacy||0)>=45?1:0),
+      'Fear of failure': ((pct.approval||0)>=48?1:0)+((pct.guilt||0)>=50?1:0)+((pct.secure||0)<=35?1:0),
+      'Emotional suppression': ((pct.withdrawal||0)>=42?1:0)+((pct.conflict_avoid||0)>=45?1:0),
+      'Resentment of siblings': ((pct.martyrdom||0)>=45?1:0)+(flags.some(f=>f.name==='Silent resentment loop')?1:0)+((pct.approval||0)>=42?1:0),
+      'People-pleasing': ((pct.approval||0)>=45?1:0)+((pct.martyrdom||0)>=40?1:0)+((pct.self_advocacy||0)<=45?1:0),
+      'Martyr complex': ((pct.martyrdom||0)>=50?1:0)+(flags.some(f=>f.name==='Silent resentment loop')?1:0)+(flags.some(f=>f.name==='Identity built on usefulness')?1:0)
+    },
+    middle:{
+      'Invisibility complex': ((pct.approval||0)>=45?1:0)+((pct.awareness||0)>=45?1:0)+((responseStyle.guardedness||0)>=3?1:0),
+      'People-pleasing to be seen': ((pct.approval||0)>=45?1:0)+((pct.self_advocacy||0)<=45?1:0)+((pct.identity_usefulness||0)>=35?1:0),
+      'Chronic under-sharing': ((pct.withdrawal||0)>=45?1:0)+((responseStyle.guardedness||0)>=3?1:0),
+      'Avoidant attachment': ((pct.withdrawal||0)>=45?1:0)+(flags.some(f=>f.name==='Difficulty receiving care')?1:0)+((pct.conflict_avoid||0)>=40?1:0),
+      'Resentment buried deep': ((pct.martyrdom||0)>=45?1:0)+(flags.some(f=>f.name==='Silent resentment loop')?1:0),
+      'Comparison seeking': ((pct.approval||0)>=45?1:0)+((pct.awareness||0)>=45?1:0),
+      'Extreme peacekeeping': ((pct.mediator||0)>=40?1:0)+((pct.conflict_avoid||0)>=40?1:0)+((pct.self_advocacy||0)<=45?1:0),
+      'Low self-advocacy': ((pct.self_advocacy||0)<=40?1:0)+((pct.conflict_avoid||0)>=40?1:0)
+    },
+    youngest:{
+      'Entitlement': ((pct.entitlement||0)>=40?1:0)+((pct.approval||0)>=45?1:0),
+      'Avoidance of responsibility': ((pct.withdrawal||0)>=45?1:0)+((pct.guilt||0)<=35?1:0)+((pct.self_advocacy||0)<=40?1:0),
+      'Manipulation via charm': ((pct.control||0)>=40?1:0)+((pct.entitlement||0)>=35?1:0)+(flags.some(f=>f.name==='Control through helpfulness')?1:0),
+      'Learned helplessness': ((pct.self_advocacy||0)<=35?1:0)+((pct.withdrawal||0)>=40?1:0),
+      'Fear of growing up': ((pct.guilt||0)>=45?1:0)+((pct.withdrawal||0)>=45?1:0),
+      'Jealousy of sibling achievements': ((pct.approval||0)>=45?1:0)+((pct.entitlement||0)>=35?1:0),
+      'Dependency on others': ((pct.self_advocacy||0)<=35?1:0)+(flags.some(f=>f.name==='Difficulty receiving care')?1:0),
+      'Seeks constant validation': ((pct.approval||0)>=50?1:0)+((pct.secure||0)<=35?1:0)
+    }
+  };
+}
+
 function deriveInsights(pct,flags,sibKey,responseStyle={guardedness:0,neutralCount:0,notes:[]}){
-  const strengthPool=[
+  const siblingProfiles={
+    eldest:{
+      strengths:[
+        {name:'Leadership',score:avg([pct.self_advocacy||0,inv(pct,'withdrawal'),inv(pct,'conflict_avoid')])},
+        {name:'Responsibility',score:avg([inv(pct,'withdrawal'),inv(pct,'secure')+20,100-(pct.guilt||0)/2])},
+        {name:'Conscientiousness',score:avg([100-(pct.control||0)/2,100-(pct.approval||0)/2,100-(pct.withdrawal||0)/2])},
+        {name:'Ambition',score:avg([100-(pct.approval||0)/2,pct.self_advocacy||0,100-(pct.guilt||0)/2])},
+        {name:'Organization',score:avg([100-(pct.control||0)/2,pct.self_advocacy||0,inv(pct,'withdrawal')])}
+      ],
+      experiences:[
+        {label:'Used as a second parent',when:(pct.enmeshment||0)>=40||(pct.martyrdom||0)>=40},
+        {label:'High parental expectations',when:(pct.approval||0)>=40||(pct.guilt||0)>=40},
+        {label:'Set the precedent for everything',when:(pct.self_advocacy||0)>=45||(pct.control||0)>=40},
+        {label:'Blamed for sibling conflicts',when:(pct.mediator||0)>=35||(pct.guilt||0)>=45},
+        {label:'Lost “only child” status suddenly',when:true},
+        {label:'Earliest strict rules',when:true},
+        {label:'Feels least favoured over time',when:(pct.approval||0)>=45},
+        {label:'Grief of losing parental attention',when:(pct.identity_usefulness||0)>=35||(pct.approval||0)>=40}
+      ],
+      patterns:[
+        ['Perfectionism',(pct.control||0)>=45||(pct.guilt||0)>=45],
+        ['Parentification',(pct.enmeshment||0)>=45&&(pct.martyrdom||0)>=40],
+        ['Control issues',(pct.control||0)>=45],
+        ['Fear of failure',(pct.approval||0)>=45||(pct.guilt||0)>=50],
+        ['Emotional suppression',(pct.withdrawal||0)>=40||(pct.conflict_avoid||0)>=45],
+        ['Resentment of siblings',(pct.martyrdom||0)>=45&&((pct.approval||0)>=40||(pct.guilt||0)>=40)],
+        ['People-pleasing',(pct.approval||0)>=45||(pct.martyrdom||0)>=40],
+        ['Martyr complex',(pct.martyrdom||0)>=50||flags.some(f=>f.name==='Silent resentment loop')]
+      ]
+    },
+    middle:{
+      strengths:[
+        {name:'Diplomacy',score:avg([pct.mediator||0,inv(pct,'control'),inv(pct,'withdrawal')])},
+        {name:'Empathy',score:avg([pct.mediator||0,100-(pct.entitlement||0),100-(pct.control||0)/2])},
+        {name:'Adaptability',score:avg([inv(pct,'control'),inv(pct,'enmeshment'),100-(pct.withdrawal||0)/2])},
+        {name:'Independence',score:avg([inv(pct,'approval'),inv(pct,'enmeshment'),100-(pct.guilt||0)/2])},
+        {name:'Conflict resolution',score:avg([pct.mediator||0,pct.self_advocacy||0,inv(pct,'conflict_avoid')])}
+      ],
+      experiences:[
+        {label:'Overlooked in family photos',when:(pct.approval||0)>=40||(pct.identity_usefulness||0)>=35},
+        {label:'Fewer childhood milestones recorded',when:true},
+        {label:'Negotiates between siblings constantly',when:(pct.mediator||0)>=35||(pct.enmeshment||0)>=40},
+        {label:'Seeks belonging outside family',when:(pct.withdrawal||0)>=35||inv(pct,'enmeshment')>=60},
+        {label:'Never fully seen by parents',when:(pct.approval||0)>=45},
+        {label:'Hand-me-downs on both sides',when:true},
+        {label:'No distinct “role” in the family',when:(pct.identity_usefulness||0)>=35||(pct.awareness||0)>=40},
+        {label:'Built strongest peer friendships',when:(pct.mediator||0)>=35||inv(pct,'withdrawal')>=55}
+      ],
+      patterns:[
+        ['Invisibility complex',(pct.approval||0)>=45||(pct.awareness||0)>=45],
+        ['People-pleasing to be seen',(pct.approval||0)>=45&&(pct.self_advocacy||0)<=45],
+        ['Chronic under-sharing',(pct.withdrawal||0)>=45||responseStyle.guardedness>=3],
+        ['Avoidant attachment',(pct.withdrawal||0)>=45&&flags.some(f=>f.name==='Difficulty receiving care')],
+        ['Resentment buried deep',(pct.martyrdom||0)>=45||flags.some(f=>f.name==='Silent resentment loop')],
+        ['Comparison seeking',(pct.approval||0)>=45||(pct.awareness||0)>=45],
+        ['Extreme peacekeeping',(pct.mediator||0)>=40&&(pct.conflict_avoid||0)>=40],
+        ['Low self-advocacy',(pct.self_advocacy||0)<=40]
+      ]
+    },
+    youngest:{
+      strengths:[
+        {name:'Charisma',score:avg([100-(pct.withdrawal||0),100-(pct.conflict_avoid||0)/2,100-(pct.approval||0)/2])},
+        {name:'Creativity',score:avg([100-(pct.control||0),inv(pct,'enmeshment'),100-(pct.guilt||0)/2])},
+        {name:'Risk-taking',score:avg([100-(pct.guilt||0),100-(pct.control||0)/2,100-(pct.withdrawal||0)/2])},
+        {name:'Social confidence',score:avg([100-(pct.approval||0)/2,pct.secure||0,100-(pct.withdrawal||0)])},
+        {name:'Humor & charm',score:avg([100-(pct.withdrawal||0),100-(pct.guilt||0)/2,100-(pct.control||0)/2])}
+      ],
+      experiences:[
+        {label:'Most lenient rules',when:true},
+        {label:'Protected by siblings',when:(pct.enmeshment||0)>=30},
+        {label:'Treated as “the baby” into adulthood',when:(pct.entitlement||0)>=35||(pct.approval||0)>=40},
+        {label:'Watched siblings make mistakes first',when:true},
+        {label:'Less pressure to achieve',when:(pct.guilt||0)<=45},
+        {label:'Exhausted parents with less energy',when:true},
+        {label:'Most freedom to experiment',when:(pct.control||0)<=45},
+        {label:'Attention from the whole family',when:(pct.approval||0)>=35||(pct.entitlement||0)>=35}
+      ],
+      patterns:[
+        ['Entitlement',(pct.entitlement||0)>=40],
+        ['Avoidance of responsibility',(pct.withdrawal||0)>=45||(pct.guilt||0)<=35],
+        ['Manipulation via charm',(pct.control||0)>=40&&(pct.entitlement||0)>=35],
+        ['Learned helplessness',(pct.self_advocacy||0)<=35&&(pct.withdrawal||0)>=40],
+        ['Fear of growing up',(pct.guilt||0)>=45||(pct.withdrawal||0)>=45],
+        ['Jealousy of sibling achievements',(pct.approval||0)>=45&&(pct.entitlement||0)>=35],
+        ['Dependency on others',(pct.self_advocacy||0)<=35||flags.some(f=>f.name==='Difficulty receiving care')],
+        ['Seeks constant validation',(pct.approval||0)>=50]
+      ]
+    }
+  };
+
+  const alias={two_e:'eldest',two_y:'youngest'};
+  const profile=siblingProfiles[alias[sibKey]||sibKey]||null;
+
+  const defaultStrengths=[
     {name:'Groundedness',score:avg([pct.secure||0,inv(pct,'guilt'),inv(pct,'approval')])},
     {name:'Boundaries',score:avg([pct.self_advocacy||0,inv(pct,'martyrdom'),inv(pct,'conflict_avoid')])},
     {name:'Diplomacy',score:avg([pct.mediator||0,pct.self_advocacy||0,inv(pct,'withdrawal')])},
     {name:'Self-reflection',score:avg([inv(pct,'awareness'),pct.secure||0,inv(pct,'withdrawal')])},
-    {name:'Flexibility',score:avg([inv(pct,'control'),inv(pct,'enmeshment'),pct.secure||0])},
-    {name:'Emotional steadiness',score:avg([inv(pct,'guilt'),inv(pct,'withdrawal'),pct.secure||0])},
-    {name:'Relational independence',score:avg([inv(pct,'approval'),inv(pct,'enmeshment'),pct.self_advocacy||0])},
-    {name:'Collaborative leadership',score:avg([pct.self_advocacy||0,pct.mediator||0,inv(pct,'control')])}
-  ].map(item=>({...item,score:clampPct(item.score)}))
-   .sort((a,b)=>b.score-a.score)
-   .slice(0,5);
+    {name:'Flexibility',score:avg([inv(pct,'control'),inv(pct,'enmeshment'),pct.secure||0])}
+  ];
+  const strengthPool=(profile?profile.strengths:defaultStrengths)
+    .map(item=>({...item,score:clampPct(item.score)}))
+    .sort((a,b)=>b.score-a.score)
+    .slice(0,5);
 
   const toxicPatterns=flags.map(f=>f.name);
   const pushPattern=(name,condition)=>{
     if(condition && !toxicPatterns.includes(name)) toxicPatterns.push(name);
   };
+  if(profile){
+    const evidence=siblingPatternEvidence(pct,flags,responseStyle);
+    const profileKey=alias[sibKey]||sibKey;
+    profile.patterns.forEach(([name])=>{
+      const strength=evidence[profileKey]?.[name]||0;
+      pushPattern(name,strength>=2);
+    });
+  }
   pushPattern('Helping to earn love',(pct.martyrdom||0)>=40&&(pct.identity_usefulness||0)>=35);
   pushPattern('Approval-driven decisions',(pct.approval||0)>=45);
   pushPattern('Conflict shutdown',(pct.conflict_avoid||0)>=45);
@@ -717,6 +911,9 @@ function deriveInsights(pct,flags,sibKey,responseStyle={guardedness:0,neutralCou
   const pushExperience=(label,condition)=>{
     if(condition && !commonExperiences.includes(label)) commonExperiences.push(label);
   };
+  if(profile){
+    profile.experiences.forEach(({label,when})=>pushExperience(label,when));
+  }
   pushExperience('Often felt responsible for other people’s emotional state',(pct.guilt||0)>=45||(pct.mediator||0)>=45);
   pushExperience('Learned early that being useful kept you connected',(pct.identity_usefulness||0)>=35||(pct.martyrdom||0)>=40);
   pushExperience('Helping can feel like the safest way to stay loved',(pct.martyrdom||0)>=40&&(pct.identity_usefulness||0)>=35);
