@@ -194,14 +194,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
       </div>
     </div>
 
-    <div class="send-block">
-      <p class="send-title">Send yourself the results</p>
-      <p class="send-body">Your answers are submitted automatically when you finish the last question. Add an email above if you want a copy of your profile sent to you.</p>
-      <button class="btn-send" id="btnSend" onclick="emailResults()"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1.5 7h11M7 2l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Email me my results</button>
-      <p class="send-msg send-ok" id="sendOk"></p>
-      <p class="send-msg send-err" id="sendErr"></p>
-    </div>
-
     <span class="sec-div">Dimension scores</span>
     <div id="dimContainer"></div>
 
@@ -803,44 +795,11 @@ async function postPayload(payload){
 }
 
 async function autoSubmitResults(){
-  const ok=document.getElementById('sendOk'),err=document.getElementById('sendErr');
-  ok.style.display='none';err.style.display='none';
   try{
     await postPayload(buildPayload('anonymous'));
     submissionMeta.stored=true;
-    ok.style.display='block';
-    ok.textContent='✓ Your answers have been submitted. Add an email above if you want a copy of your results.';
   }catch(e){
     console.error('Automatic submission failed:',e);
-    err.style.display='block';
-    err.textContent='Automatic submission failed. Please add an email above and try the button below.';
-  }
-}
-
-async function emailResults(){
-  const btn=document.getElementById('btnSend'),ok=document.getElementById('sendOk'),err=document.getElementById('sendErr');
-  const email=document.getElementById('emailInput').value.trim();
-  if(!email){
-    ok.style.display='none';
-    err.style.display='block';
-    err.textContent='Add your email above if you want a copy of your results.';
-    return;
-  }
-
-  btn.disabled=true;btn.textContent='Sending…';
-  ok.style.display='none';err.style.display='none';
-
-  try{
-    await postPayload(buildPayload(email));
-    ok.style.display='block';
-    ok.textContent='✓ Your results have been sent to your email address.';
-    btn.textContent='Email sent ✓';
-  }catch(e){
-    console.error('Email submission failed:',e);
-    btn.disabled=false;
-    btn.textContent='Email me my results';
-    err.style.display='block';
-    err.textContent='We could not send the email. Please try again.';
   }
 }
 </script>
