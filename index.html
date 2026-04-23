@@ -459,7 +459,7 @@ function renderQ(){
   document.getElementById('progCount').textContent=(cur+1)+' / '+QS.length;
   document.getElementById('qCtr').textContent='Question '+(cur+1)+' of '+QS.length;
   document.getElementById('btnBack').disabled=cur===0;
-  document.getElementById('btnNext').textContent=cur===QS.length-1?'Submit answers →':'Next →';
+  document.getElementById('btnNext').textContent=cur===QS.length-1?'Submit my results →':'Next →';
 
   let html='';
   if(q.type==='scene'){
@@ -493,11 +493,23 @@ function pickScene(qid,i){
 function pickLikert(stId,v,dims,ws){
   likertAns[stId]={v,dims,ws};
 }
-function goNext(){if(cur<QS.length-1){cur++;renderQ();}else buildResults();}
+async function goNext(){
+  if(cur<QS.length-1){
+    cur++;
+    renderQ();
+    return;
+  }
+  const btn=document.getElementById('btnNext');
+  btn.disabled=true;
+  btn.textContent='Submitting…';
+  await buildResults();
+  btn.disabled=false;
+  btn.textContent='Submit my results →';
+}
 function goBack(){if(cur>0){cur--;renderQ();}}
 
 // ── SCORING ───────────────────────────────────────────────────
-function buildResults(){
+async function buildResults(){
   const scores={},maxP={};
   Object.keys(DIMS).forEach(d=>{scores[d]=0;maxP[d]=0;});
 
@@ -550,10 +562,10 @@ function buildResults(){
   document.getElementById('recapBody').innerHTML=rows;
 
   window._RD={sorted,pct,flags,sibLabel,insights};
+  if(!submissionMeta.id) submissionMeta.id=`sub_${Date.now()}_${Math.random().toString(36).slice(2,10)}`;
+  if(!submissionMeta.stored) await autoSubmitResults();
   showScreen('results');
   setTimeout(()=>{document.querySelectorAll('.dim-bar').forEach(b=>{b.style.width=b.dataset.w+'%';});},150);
-  if(!submissionMeta.id) submissionMeta.id=`sub_${Date.now()}_${Math.random().toString(36).slice(2,10)}`;
-  if(!submissionMeta.stored) autoSubmitResults();
 }
 
 function calcFlags(){
