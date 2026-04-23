@@ -485,7 +485,7 @@ function renderQ(){
         const saved=likertAns[st.id]?.v??null;
         return`<div class="likert-item">
           <p class="likert-stmt">${st.text}</p>
-          <div class="likert-scale">${[1,2,3,4,5].map(v=>`<label><input type="radio" name="${st.id}" value="${v}" ${saved===v?'checked':''} onchange="pickLikert('${st.id}',${v},${JSON.stringify(st.dims)},${JSON.stringify(st.w)},${JSON.stringify(st.dir||[])})"><span class="likert-pip">${v}</span></label>`).join('')}</div>
+          <div class="likert-scale">${[1,2,3,4,5].map(v=>`<label onclick="pickLikert('${st.id}',${v},${JSON.stringify(st.dims)},${JSON.stringify(st.w)},${JSON.stringify(st.dir||[])})"><input type="radio" name="${st.id}" value="${v}" ${saved===v?'checked':''}><span class="likert-pip">${v}</span></label>`).join('')}</div>
           <div class="likert-ends"><span>Strongly disagree</span><span>Strongly agree</span></div>
         </div>`;
       }).join('')}
