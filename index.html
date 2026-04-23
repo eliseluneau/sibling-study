@@ -586,6 +586,8 @@ function calcFlags(pct={},responseStyle={guardedness:0}){
     fl.push({name:'Family role enmeshment',text:"In multiple questions, your family-of-origin context pulled you back into an older version of yourself — and part of you found it comfortable. The role assigned to you in childhood is still active. Knowing this intellectually and escaping it behaviourally are very different things."});
   if(responseStyle.guardedness>=3)
     fl.push({name:'Self-protective responding',text:"Some of your direct self-descriptions were more composed than your situational choices. When that happens, the interpretation leans more heavily on the indirect and relational questions, which are usually harder to curate."});
+  if((responseStyle.neutralCount||0)>=6)
+    fl.push({name:'High neutral responding',text:"You chose the middle option often enough that uncertainty, ambivalence, or self-protection may be part of the profile. In those areas, the interpretation leans more on the surrounding situational answers than on the direct self-ratings alone."});
   if(fl.length===0)
     fl.push({name:'No strong indirect signals detected',text:"Your answers did not cluster into consistent indirect patterns. This may reflect genuine groundedness and self-awareness — or that you consistently chose the most measured option. A follow-up conversation will explore this further."});
   return fl;
@@ -603,6 +605,18 @@ function calcResponseStyle(rawPct){
   };
 
   let guardedness=0;
+  const neutralCount=Object.values(likertAns).filter(({v})=>v===3).length;
+
+  if(neutralCount>=6){
+    guardedness++;
+    apply('awareness',4);
+    note('A high number of neutral answers suggests ambivalence, uncertainty, or reluctance to state the stronger version directly.');
+  }
+  if(neutralCount>=10){
+    guardedness++;
+    apply('secure',-4);
+    note('Repeated middle responses suggest some parts of the self-report may be more obscured than absent.');
+  }
 
   if((lv('L02')>=4) && ((sa(16)===0||sa(16)===3)||lv('L22')>=4||lv('L01')>=4)){
     guardedness++;
@@ -655,7 +669,7 @@ function calcResponseStyle(rawPct){
     apply('secure',-6);
   }
 
-  return{guardedness,adjustments,notes};
+  return{guardedness,neutralCount,adjustments,notes};
 }
 
 function avg(vals){
@@ -670,7 +684,7 @@ function inv(pct,key){
   return 100-(pct[key]||0);
 }
 
-function deriveInsights(pct,flags,sibKey,responseStyle={guardedness:0,notes:[]}){
+function deriveInsights(pct,flags,sibKey,responseStyle={guardedness:0,neutralCount:0,notes:[]}){
   const strengthPool=[
     {name:'Groundedness',score:avg([pct.secure||0,inv(pct,'guilt'),inv(pct,'approval')])},
     {name:'Boundaries',score:avg([pct.self_advocacy||0,inv(pct,'martyrdom'),inv(pct,'conflict_avoid')])},
@@ -716,6 +730,7 @@ function deriveInsights(pct,flags,sibKey,responseStyle={guardedness:0,notes:[]})
   pushExperience('Achievement can become a way to secure love or recognition',(flags.some(f=>f.name==='Unresolved family approval hunger')));
   pushExperience('Helping can slide into over-responsibility',(flags.some(f=>f.name==='Control through helpfulness')||flags.some(f=>f.name==='Identity built on usefulness')));
   pushExperience('Parts of your profile were easier to admit indirectly than directly',(responseStyle.guardedness>=3));
+  pushExperience('Some areas may feel hard to name cleanly, so you often landed in the middle rather than at either extreme',((responseStyle.neutralCount||0)>=6));
 
   const siblingExperiences={
     only:'Pressure to be self-contained and emotionally older than your years',
