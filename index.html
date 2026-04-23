@@ -99,9 +99,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 .dim-hdr{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
 .dim-name{font-size:13px;font-weight:500;color:var(--ink)}
 .dim-pct{font-size:12px;color:var(--muted-light)}
-.dim-track{height:2px;background:var(--paper-dark);border-radius:1px;margin-bottom:5px}
+.dim-track{height:5px;background:var(--paper-dark);border-radius:999px;margin-bottom:5px}
 .dim-bar{height:100%;border-radius:1px;transition:width 1s cubic-bezier(0.4,0,0.2,1)}
 .dim-desc{font-size:12px;color:var(--muted);line-height:1.55}
+.dim-tier{font-size:11px;margin-left:8px}
 .flag-item{padding:20px 0;border-bottom:1px solid var(--border)}
 .flag-item:last-child{border-bottom:none}
 .flag-name{font-size:10px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
@@ -224,7 +225,7 @@ const QS=[
    scene:"You spend three weekends helping a close friend through a difficult move — packing, logistics, heavy lifting, emotional support. A month later, at dinner with mutual friends, they say: 'It was chaos but I basically just powered through it alone.' Everyone nods.",
    stem:"You:",
    opts:["Feel a sharp internal sting but say nothing — correcting them would make me look petty","Say something light in the moment, like 'I seem to remember being there,' and gauge their reaction","Stay quiet during dinner but bring it up privately afterward — I need them to know it wasn't okay","Feel briefly irritated, then genuinely let it go — I didn't help them to be thanked","Start quietly re-evaluating how much I'm willing to give this person going forward"],
-   dims:["martyrdom","self_advocacy","self_advocacy","secure","withdrawal"],w:[9,6,7,1,8]},
+   dims:["martyrdom","self_advocacy","self_advocacy","secure","withdrawal"],w:[11,6,7,1,8]},
 
   {id:1,type:"scene",sec:"Effort & recognition",
    scene:"You've been the invisible glue of your friend group for years — organising events, remembering birthdays, smoothing over tensions nobody else notices. One day someone says: 'We're just such a naturally close group, aren't we?' Everyone agrees warmly.",
@@ -249,13 +250,20 @@ const QS=[
    scene:"Your partner or closest friend does something that genuinely hurts you. Not catastrophic — but real, not imagined. They don't seem to notice.",
    stem:"What actually happens?",
    opts:["I bring it up the same day — direct, clear, without drama","I wait for the right moment, which sometimes never comes, and then it dissolves unspoken","I hint at it through mood or short answers, hoping they'll ask","I tell myself it's not worth the friction and genuinely move on","I bring it up eventually, but I've already been quietly resentful for longer than I'd admit"],
-   dims:["self_advocacy","conflict_avoid","conflict_avoid","secure","martyrdom"],w:[7,7,8,1,9]},
+   dims:["self_advocacy","conflict_avoid","conflict_avoid","secure","martyrdom"],w:[7,7,8,1,11]},
+
+  {id:31,type:"scene",sec:"Relationships",
+   scene:"You've been the one holding a friendship together during a hard year for the other person. They've recovered and their life is full again. They're happy. You notice they're less available.",
+   stem:"What actually moves through you?",
+   opts:["Genuine happiness for them — this is what support is for","A quiet sense of loss — I'm not sure where I fit now that they're okay","A subtle withdrawal — if they don't need me I'm not sure what we are","Relief — it was a lot to carry and now I can breathe","A faint resentment I don't fully understand and feel guilty about"],
+   dims:["secure","martyrdom","martyrdom","secure","martyrdom"],w:[1,9,9,2,9]},
 
   {id:5,type:"likert",sec:"Quick check-in",
    statements:[
      {id:"L04",text:"When someone upsets me, I tend to say so clearly rather than let it simmer.",dims:["self_advocacy","conflict_avoid"],w:[7,8],dir:[1,-1]},
      {id:"L05",text:"I have been told I'm the peacekeeper or mediator in my family.",dims:["mediator","enmeshment"],w:[8,7]},
      {id:"L06",text:"Conflict makes me feel physically tense, even when it doesn't involve me.",dims:["conflict_avoid","guilt"],w:[8,7]},
+     {id:"L33",text:"I sometimes do more than was asked, then feel unacknowledged for the extra effort.",dims:["martyrdom","identity_usefulness"],w:[9,8]},
    ]},
 
   {id:6,type:"scene",sec:"Control & perfectionism",
@@ -270,11 +278,18 @@ const QS=[
    opts:["I feel genuinely fine — if the outcome is good, the authorship doesn't matter","I feel irritated but say nothing — complaining would make me look territorial","I ask calmly why the changes were made — not to reverse them, but because I need to understand","I feel a disproportionate anger I recognise is about more than just this project","I make a mental note that this person doesn't respect process, and adjust how I work with them"],
    dims:["secure","martyrdom","self_advocacy","control","withdrawal"],w:[1,8,6,9,7]},
 
+  {id:30,type:"scene",sec:"Everyday decisions",
+   scene:"A friend is planning a trip and asks for your advice on where to stay. You've been to that city. They take your suggestion, then a week later say they're thinking of switching to a different neighbourhood after reading some reviews.",
+   stem:"Your honest internal reaction:",
+   opts:["A flicker of irritation — I gave them the right answer already","Curiosity — maybe the reviews flagged something I missed","A quiet urge to explain again why my original suggestion was better","Fine — it's their trip, not mine","I look up the reviews myself to see if I should update my view"],
+   dims:["control","secure","control","secure","awareness"],w:[8,1,9,1,6]},
+
   {id:8,type:"likert",sec:"Quick check-in",
    statements:[
      {id:"L07",text:"I find it genuinely difficult to let go of a task and trust someone else to do it.",dims:["control"],w:[9]},
      {id:"L08",text:"I often end up in charge of things, even when I didn't intend to be.",dims:["control","martyrdom"],w:[8,7]},
      {id:"L09",text:"I feel uncomfortable when outcomes are out of my hands.",dims:["control","guilt"],w:[9,7]},
+     {id:"L31",text:"When I give someone advice and they don't take it, I find it genuinely hard to let go of the outcome.",dims:["control","martyrdom"],w:[9,7]},
    ]},
 
   {id:9,type:"scene",sec:"Identity & approval",
@@ -357,19 +372,20 @@ const QS=[
    scene:"You're in a close relationship and you realise you've been the one initiating contact, making plans, and checking in for several weeks. The other person hasn't reciprocated.",
    stem:"What do you do?",
    opts:["Stop initiating and wait — the silence will be informative","Bring it up directly: 'I've noticed I've been reaching out more — is everything okay?'","Tell yourself they're busy and find reasons to justify the imbalance","Start quietly withdrawing, without saying why","Continue as before because the relationship matters more to you than the asymmetry"],
-   dims:["withdrawal","self_advocacy","approval","withdrawal","martyrdom"],w:[7,7,8,7,9]},
+   dims:["withdrawal","self_advocacy","approval","withdrawal","martyrdom"],w:[7,7,8,7,11]},
 
   {id:22,type:"scene",sec:"Relationships & attachment",
    scene:"Someone tells you they admire how self-sufficient you are — that you never seem to need anything from anyone.",
    stem:"What do you feel when they say that?",
    opts:["Pride — I've worked hard to be this way","A twinge of something — because it's partly armour, not just strength","Sadness, actually — I wonder if I've made myself inaccessible","Nothing in particular — it's just true","A wish that someone would look past the self-sufficiency and ask if I actually want help"],
-   dims:["secure","awareness","awareness","secure","martyrdom"],w:[2,8,9,1,9]},
+   dims:["secure","awareness","awareness","secure","martyrdom"],w:[2,8,9,1,11]},
 
   {id:23,type:"likert",sec:"Quick check-in",
    statements:[
      {id:"L22",text:"In relationships, I tend to give more than I receive — and I've accepted that.",dims:["martyrdom","enmeshment"],w:[9,7]},
      {id:"L23",text:"When someone offers to help me, I find it genuinely easy to accept.",dims:["secure","awareness"],w:[2,7],dir:[1,-1]},
      {id:"L24",text:"I sometimes pull back from people without fully explaining why.",dims:["withdrawal","conflict_avoid"],w:[8,7]},
+     {id:"L32",text:"I am aware of keeping score in relationships — even when I don't want to be.",dims:["martyrdom","control"],w:[9,7]},
    ]},
 
   {id:24,type:"scene",sec:"Power & recognition",
@@ -452,6 +468,7 @@ function renderQ(){
   document.getElementById('qCtr').textContent='Question '+(cur+1)+' of '+QS.length;
   document.getElementById('btnBack').disabled=cur===0;
   document.getElementById('btnNext').textContent=cur===QS.length-1?'Submit my results →':'Next →';
+  document.getElementById('btnNext').disabled=!currentQuestionAnswered();
 
   let html='';
   if(q.type==='scene'){
@@ -481,11 +498,24 @@ function renderQ(){
 function pickScene(qid,i){
   sceneAns[qid]=i;
   document.querySelectorAll('#opts .opt').forEach((b,j)=>b.classList.toggle('sel',j===i));
+  document.getElementById('btnNext').disabled=!currentQuestionAnswered();
 }
 function pickLikert(stId,v,dims,ws,dir=[]){
   likertAns[stId]={v,dims,ws,dir};
+  document.getElementById('btnNext').disabled=!currentQuestionAnswered();
 }
+
+function currentQuestionAnswered(){
+  const q=QS[cur];
+  if(q.type==='scene') return sceneAns[q.id]!==undefined && sceneAns[q.id]!==null;
+  return q.statements.every(st=>likertAns[st.id]?.v!==undefined && likertAns[st.id]?.v!==null);
+}
+
 async function goNext(){
+  if(!currentQuestionAnswered()){
+    alert('Please answer this question before continuing.');
+    return;
+  }
   if(cur<QS.length-1){
     cur++;
     renderQ();
@@ -531,8 +561,15 @@ async function buildResults(){
 
   const rawPct={};
   Object.keys(DIMS).forEach(d=>{rawPct[d]=Math.min(100,Math.round((scores[d]/(maxP[d]||1))*100));});
+  console.log('RAW SCORES', JSON.stringify(scores));
+  console.log('MAX POSSIBLE', JSON.stringify(maxP));
+  console.log('RAW PCT', JSON.stringify(rawPct));
+  const spreadBase={};
+  Object.keys(DIMS).forEach(d=>{
+    spreadBase[d]=d==='secure'?rawPct[d]:spreadPct(rawPct[d]);
+  });
   const responseStyle=calcResponseStyle(rawPct);
-  const pct={...rawPct};
+  const pct={...spreadBase};
   Object.keys(responseStyle.adjustments).forEach(dim=>{
     pct[dim]=clampPct((pct[dim]||0)+responseStyle.adjustments[dim]);
   });
@@ -544,11 +581,15 @@ async function buildResults(){
   document.getElementById('resEyebrow').textContent=sibLabel;
   document.getElementById('resSub').textContent='Derived from how you said you would behave across '+QS.length+' questions. The patterns below were invisible during the test.';
 
-  document.getElementById('dimContainer').innerHTML=sorted.map(d=>`<div class="dim-block">
-    <div class="dim-hdr"><span class="dim-name">${DIMS[d].label}</span><span class="dim-pct">${pct[d]}%</span></div>
+  document.getElementById('dimContainer').innerHTML=sorted.map((d,i)=>{
+    const tier=tierMeta(pct[d]);
+    const rankStyle=i<2?'border-left:2px solid var(--accent);padding-left:12px;':'';
+    return `<div class="dim-block" style="${rankStyle}">
+    <div class="dim-hdr"><span class="dim-name">${DIMS[d].label}</span><span><span class="dim-pct">${pct[d]}%</span><span class="dim-tier" style="color:${tier.color};font-weight:${tier.weight}">${tier.label}</span></span></div>
     <div class="dim-track"><div class="dim-bar" style="width:0%;background:${DIMS[d].col}" data-w="${pct[d]}"></div></div>
     <p class="dim-desc">${DIMS[d].desc}</p>
-  </div>`).join('');
+  </div>`;
+  }).join('');
 
   document.getElementById('flagContainer').innerHTML=flags.map(f=>`<div class="flag-item"><p class="flag-name">${f.name}</p><p class="flag-text">${f.text}</p></div>`).join('');
 
@@ -758,8 +799,19 @@ function clampPct(v){
   return Math.max(0,Math.min(100,Math.round(v)));
 }
 
+function spreadPct(x){
+  return Math.round(Math.pow(x/100,0.72)*100);
+}
+
 function inv(pct,key){
   return 100-(pct[key]||0);
+}
+
+function tierMeta(value){
+  if(value<=25) return {label:'low',color:'var(--muted-light)',weight:'400'};
+  if(value<=50) return {label:'moderate',color:'var(--accent)',weight:'400'};
+  if(value<=75) return {label:'elevated',color:'var(--accent)',weight:'400'};
+  return {label:'high',color:'var(--ink)',weight:'500'};
 }
 
 function siblingPatternEvidence(pct,flags,responseStyle={}){
