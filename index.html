@@ -279,17 +279,17 @@ const QS=[
    dims:["secure","martyrdom","self_advocacy","control","withdrawal"],w:[1,8,6,9,7]},
 
   {id:30,type:"scene",sec:"Everyday decisions",
-   scene:"A friend is planning a trip and asks for your advice on where to stay. You've been to that city. They take your suggestion, then a week later say they're thinking of switching to a different neighbourhood after reading some reviews.",
+   scene:"A friend asks for your advice on something you know well. You give a clear recommendation. Two weeks later they mention they went a different direction after thinking it over. It worked out fine.",
    stem:"Your honest internal reaction:",
-   opts:["A flicker of irritation — I gave them the right answer already","Curiosity — maybe the reviews flagged something I missed","A quiet urge to explain again why my original suggestion was better","Fine — it's their trip, not mine","I look up the reviews myself to see if I should update my view"],
-   dims:["control","secure","control","secure","awareness"],w:[8,1,9,1,6]},
+   opts:["Genuine curiosity about what made them change their mind","A flicker of something — mild irritation I wouldn't say out loud","A quiet sense that they probably would have had an easier time if they'd just listened","Nothing — it's their decision, outcomes are theirs too","I find myself noting this for future reference when they ask me things"],
+   dims:["secure","control","control","secure","control"],w:[1,8,9,1,7]},
 
   {id:8,type:"likert",sec:"Quick check-in",
    statements:[
      {id:"L07",text:"I find it genuinely difficult to let go of a task and trust someone else to do it.",dims:["control"],w:[9]},
      {id:"L08",text:"I often end up in charge of things, even when I didn't intend to be.",dims:["control","martyrdom"],w:[8,7]},
      {id:"L09",text:"I feel uncomfortable when outcomes are out of my hands.",dims:["control","guilt"],w:[9,7]},
-     {id:"L31",text:"When I give someone advice and they don't take it, I find it genuinely hard to let go of the outcome.",dims:["control","martyrdom"],w:[9,7]},
+     {id:"L31",text:"When I give advice and someone doesn't take it, I find it hard to fully let the outcome go.",dims:["control","martyrdom"],w:[9,7]},
    ]},
 
   {id:9,type:"scene",sec:"Identity & approval",
@@ -482,7 +482,7 @@ function renderQ(){
     html=`<div class="breaker-wrap">
       <p class="breaker-title">Quick check-in — rate each statement</p>
       ${q.statements.map(st=>{
-        const saved=likertAns[st.id]??null;
+        const saved=likertAns[st.id]?.v??null;
         return`<div class="likert-item">
           <p class="likert-stmt">${st.text}</p>
           <div class="likert-scale">${[1,2,3,4,5].map(v=>`<label><input type="radio" name="${st.id}" value="${v}" ${saved===v?'checked':''} onchange="pickLikert('${st.id}',${v},${JSON.stringify(st.dims)},${JSON.stringify(st.w)},${JSON.stringify(st.dir||[])})"><span class="likert-pip">${v}</span></label>`).join('')}</div>
@@ -502,6 +502,11 @@ function pickScene(qid,i){
 }
 function pickLikert(stId,v,dims,ws,dir=[]){
   likertAns[stId]={v,dims,ws,dir};
+  const el=document.querySelector(`input[name="${stId}"]`)?.closest('.likert-item');
+  if(el){
+    el.style.outline='';
+    el.style.borderRadius='';
+  }
   document.getElementById('btnNext').disabled=!currentQuestionAnswered();
 }
 
@@ -512,6 +517,22 @@ function currentQuestionAnswered(){
 }
 
 async function goNext(){
+  const q=QS[cur];
+  if(q.type==='likert'){
+    const unanswered=q.statements.filter(st=>!likertAns[st.id]);
+    if(unanswered.length>0){
+      unanswered.forEach(st=>{
+        const items=document.querySelectorAll('.likert-item');
+        items.forEach(el=>{
+          if(el.querySelector(`input[name="${st.id}"]`)){
+            el.style.outline='1px solid var(--accent)';
+            el.style.borderRadius='2px';
+          }
+        });
+      });
+      return;
+    }
+  }
   if(!currentQuestionAnswered()){
     alert('Please answer this question before continuing.');
     return;
