@@ -506,8 +506,13 @@ async function buildResults(){
   Object.keys(DIMS).forEach(d=>{scores[d]=0;maxP[d]=0;});
 
   QS.filter(q=>q.type==='scene').forEach(q=>{
+    const questionMaxByDim={};
     q.dims.forEach((dim,idx)=>{
-      if(DIMS[dim]) maxP[dim]+=(q.w[idx]||0);
+      if(!DIMS[dim]) return;
+      questionMaxByDim[dim]=Math.max(questionMaxByDim[dim]||0,q.w[idx]||0);
+    });
+    Object.keys(questionMaxByDim).forEach(dim=>{
+      maxP[dim]+=questionMaxByDim[dim];
     });
     const c=sceneAns[q.id]??null;if(c===null)return;
     const dim=q.dims[c];if(DIMS[dim])scores[dim]+=q.w[c];
@@ -570,72 +575,86 @@ async function buildResults(){
 function calcFlags(pct={},responseStyle={guardedness:0}){
   const sa=k=>sceneAns[k]??null,lv=id=>likertAns[id]?.v??null;
   const fl=[];
-  const push=(name,text,score)=>{ if(score>=2 && !fl.some(f=>f.name===name)) fl.push({name,text}); };
+  const push=(name,text,score,primaryDim)=>{
+    if(primaryDim && (pct[primaryDim]||0)<30) return;
+    if(score>=2 && !fl.some(f=>f.name===name)) fl.push({name,text});
+  };
 
   push(
     'Silent resentment loop',
     'Across multiple questions, you absorbed effort, felt the sting, and said nothing. The feeling was real; the response was silence. This pattern often appears when suppression felt safer than expression for a long time.',
-    ((pct.martyrdom||0)>=40?1:0)+((pct.withdrawal||0)>=40?1:0)+((sa(0)===0||sa(0)===4)?1:0)+(flagsLike('resentment'))
+    ((pct.martyrdom||0)>=40?1:0)+((pct.withdrawal||0)>=40?1:0)+((sa(0)===0||sa(0)===4)?1:0)+(flagsLike('resentment')),
+    'martyrdom'
   );
 
   push(
     'Identity built on usefulness',
     "Multiple answers suggest your sense of self becomes less steady when you are not solving, organising, or being needed. From the outside this can look like generosity; from the inside it can feel closer to compulsion.",
-    ((pct.identity_usefulness||0)>=35?1:0)+((pct.martyrdom||0)>=35?1:0)+((sa(26)===0||sa(26)===3)?1:0)+((sa(29)===1)?1:0)
+    ((pct.identity_usefulness||0)>=35?1:0)+((pct.martyrdom||0)>=35?1:0)+((sa(26)===0||sa(26)===3)?1:0)+((sa(29)===1)?1:0),
+    'identity_usefulness'
   );
 
   push(
     'Unresolved family approval hunger',
     "Your family's recognition still appears to carry more emotional weight than you'd like. The adult version often shows up as performing competence, goodness, or achievement toward an internal audience that may no longer be speaking aloud.",
-    ((pct.approval||0)>=42?1:0)+((pct.enmeshment||0)>=38?1:0)+((sa(10)===1||sa(10)===4)?1:0)+(lv('L11')>=4?1:0)
+    ((pct.approval||0)>=42?1:0)+((pct.enmeshment||0)>=38?1:0)+((sa(10)===1||sa(10)===4)?1:0)+(lv('L11')>=4?1:0),
+    'approval'
   );
 
   push(
     'Control through helpfulness',
     "You tend to take over, redo, or quietly steer outcomes under the banner of being useful. The behaviour may be genuinely caring, but it also seems to regulate anxiety and uncertainty.",
-    ((pct.control||0)>=40?1:0)+((pct.martyrdom||0)>=32?1:0)+((sa(6)===0||sa(6)===2||sa(7)===3)?1:0)+((lv('L07')>=4&&lv('L09')>=4)?1:0)
+    ((pct.control||0)>=40?1:0)+((pct.martyrdom||0)>=32?1:0)+((sa(6)===0||sa(6)===2||sa(7)===3)?1:0)+((lv('L07')>=4&&lv('L09')>=4)?1:0),
+    'control'
   );
 
   push(
     'Difficulty receiving care',
     "You seem more comfortable giving than receiving. When care is directed at you, something in the system tightens: deflection, self-sufficiency, minimising, or discomfort with depending on someone else.",
-    ((pct.withdrawal||0)>=35?1:0)+((pct.secure||0)<=28?1:0)+((sa(22)===1||sa(22)===4)?1:0)+(lv('L23')<=2?1:0)
+    ((pct.withdrawal||0)>=35?1:0)+((pct.secure||0)<=28?1:0)+((sa(22)===1||sa(22)===4)?1:0)+(lv('L23')<=2?1:0),
+    'withdrawal'
   );
 
   push(
     'Automatic guilt activation',
     "Your guilt appears to fire quickly and linger beyond the facts of the situation. It behaves less like a clean moral signal and more like a reflex linked to responsibility and relational tension.",
-    ((pct.guilt||0)>=45?1:0)+((sa(15)===0||sa(15)===4)?1:0)+((lv('L16')>=4&&lv('L18')>=4)?1:0)
+    ((pct.guilt||0)>=45?1:0)+((sa(15)===0||sa(15)===4)?1:0)+((lv('L16')>=4&&lv('L18')>=4)?1:0),
+    'guilt'
   );
 
   push(
     'Family role enmeshment',
     "Your family-of-origin context still seems to pull you back into an older role. Knowing that intellectually is one thing; the data here suggests it is still active behaviourally.",
-    ((pct.enmeshment||0)>=42?1:0)+((sa(12)===1||sa(12)===2)?1:0)+((lv('L13')>=4&&lv('L14')>=4)?1:0)
+    ((pct.enmeshment||0)>=42?1:0)+((sa(12)===1||sa(12)===2)?1:0)+((lv('L13')>=4&&lv('L14')>=4)?1:0),
+    'enmeshment'
   );
 
   push(
     'Conflict shutdown',
     "When tension rises, your system appears to prefer indirect management over open confrontation. The result is often delay, silence, mood signalling, or retreat rather than clear engagement.",
-    ((pct.conflict_avoid||0)>=42?1:0)+((pct.withdrawal||0)>=38?1:0)+((sa(4)===1||sa(4)===2)?1:0)+(lv('L24')>=4?1:0)
+    ((pct.conflict_avoid||0)>=42?1:0)+((pct.withdrawal||0)>=38?1:0)+((sa(4)===1||sa(4)===2)?1:0)+(lv('L24')>=4?1:0),
+    'conflict_avoid'
   );
 
   push(
     'Over-functioning identity',
     "You often become the organiser, holder, fixer, or emotional infrastructure in a system. The pattern is not just that you help; it is that other people begin to rely on you staying that person.",
-    ((pct.martyrdom||0)>=38?1:0)+((pct.identity_usefulness||0)>=35?1:0)+((pct.enmeshment||0)>=38?1:0)+((lv('L13')>=4||lv('L22')>=4)?1:0)
+    ((pct.martyrdom||0)>=38?1:0)+((pct.identity_usefulness||0)>=35?1:0)+((pct.enmeshment||0)>=38?1:0)+((lv('L13')>=4||lv('L22')>=4)?1:0),
+    'identity_usefulness'
   );
 
   push(
     'Recognition sensitivity',
     "Recognition appears to matter not just because praise feels good, but because being overlooked lands as something deeper: erasure, invisibility, or the familiar feeling of carrying more than was seen.",
-    ((pct.approval||0)>=42?1:0)+((pct.martyrdom||0)>=35?1:0)+((sa(24)===4)?1:0)+(lv('L26')>=4?1:0)
+    ((pct.approval||0)>=42?1:0)+((pct.martyrdom||0)>=35?1:0)+((sa(24)===4)?1:0)+(lv('L26')>=4?1:0),
+    'approval'
   );
 
   push(
     'Role fatigue',
     "There are signs that the role you learned to play still works, but also costs you. What shows up here is not only competence but tiredness: the strain of being the one who absorbs, anticipates, or holds.",
-    ((pct.enmeshment||0)>=38?1:0)+((pct.guilt||0)>=42?1:0)+((pct.martyrdom||0)>=38?1:0)+((sa(13)===3||sa(16)===3)?1:0)
+    ((pct.enmeshment||0)>=38?1:0)+((pct.guilt||0)>=42?1:0)+((pct.martyrdom||0)>=38?1:0)+((sa(13)===3||sa(16)===3)?1:0),
+    'enmeshment'
   );
 
   function flagsLike(kind){
@@ -1054,9 +1073,17 @@ function buildPayload(emailOverride='anonymous'){
   const payload={
     "Submission ID": submissionMeta.id,
     "Sibling position": d.sibLabel,
+    "Birth order group": sib,
     "Submission date":  new Date().toISOString().split('T')[0],
     "Respondent email": email,
     "Top dimensions":   topDims,
+    "Top 3 dimensions": d.sorted.slice(0,3).map(k=>k).join(', '),
+    "Dominant pattern": d.sorted[0]||'',
+    "Score profile vector": JSON.stringify(Object.keys(DIMS).map(k=>({dim:k,pct:d.pct[k]||0}))),
+    "Guilt vs Control delta": (d.pct['guilt']||0)-(d.pct['control']||0),
+    "Martyrdom vs Withdrawal delta": (d.pct['martyrdom']||0)-(d.pct['withdrawal']||0),
+    "Advocacy score": d.pct['self_advocacy']||0,
+    "Secure score": d.pct['secure']||0,
     "All dimension scores": allDimensionScores,
     "Strengths":        strengthsSummary,
     "Toxic patterns":   toxicPatterns,
