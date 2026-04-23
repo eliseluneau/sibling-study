@@ -220,7 +220,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 // CONFIG — paste your Google Apps Script Web App URL here
 // (see SETUP.md for instructions)
 // ══════════════════════════════════════════════════════════════
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz1BjGuUJlLzwblQt-b9ouPc5UGVwF-7KXuG2UJtmvSu3SepfQBeRF1j_X_WzMD8xzmJw/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwMu7-hdWbD7WEJs4WVLrlp_fE4lEWzn3xKwmmb7wZ626z1OEjjuz3Tnm8bFEQdFNKabQ/exec";
 // ══════════════════════════════════════════════════════════════
 
 
@@ -639,23 +639,36 @@ async function submitResults(){
   d.sorted.forEach(k=>{ payload[DIMS[k].label]=d.pct[k]; });
 
   let success=false;
+  const body=new URLSearchParams({payload: JSON.stringify(payload)}).toString();
 
   try{
-    // Google Apps Script accepts a no-cors POST via form-encoded body
-    // to avoid the CORS preflight that blocks JSON posts from browsers
-    const form=new FormData();
-    form.append('payload', JSON.stringify(payload));
-
-    await fetch(APPS_SCRIPT_URL, {
+    // First try a normal POST so we can detect a real HTTP error if the
+    // current deployment is misconfigured or no longer public.
+    const response=await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
-      body: form,
-      mode: 'no-cors' // Apps Script doesn't return CORS headers; response is opaque but the write succeeds
+      headers: {'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+      body,
+      mode: 'cors',
+      cache: 'no-store'
     });
-    // With no-cors we can't read the response status, so we optimistically assume success
+    if(!response.ok) throw new Error(`HTTP ${response.status}`);
     success=true;
   }catch(e){
-    console.error('Submission error:',e);
-    success=false;
+    console.warn('Verified submission failed, retrying with no-cors fallback:',e);
+    try{
+      await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: {'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+        body,
+        mode: 'no-cors',
+        cache: 'no-store',
+        keepalive: true
+      });
+      success=true;
+    }catch(fallbackError){
+      console.error('Submission error:',fallbackError);
+      success=false;
+    }
   }
 
   if(success){
