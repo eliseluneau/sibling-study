@@ -195,9 +195,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
     </div>
 
     <div class="send-block">
-      <p class="send-title">Submit your results</p>
-      <p class="send-body">Your answers will be stored anonymously in the research database and sent to the research team. If you added an email above, you'll receive a copy of your profile.</p>
-      <button class="btn-send" id="btnSend" onclick="submitResults()"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1.5 7h11M7 2l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Submit results</button>
+      <p class="send-title">Send yourself the results</p>
+      <p class="send-body">Your answers are submitted automatically when you finish the last question. Add an email above if you want a copy of your profile sent to you.</p>
+      <button class="btn-send" id="btnSend" onclick="emailResults()"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1.5 7h11M7 2l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Email me my results</button>
       <p class="send-msg send-ok" id="sendOk"></p>
       <p class="send-msg send-err" id="sendErr"></p>
     </div>
@@ -436,11 +436,14 @@ const DIMS={
 };
 
 let cur=0,sib='',sceneAns={},likertAns={};
+let submissionMeta={id:'',stored:false};
 
 function begin(){
   const s=document.querySelector('input[name="sib"]:checked');
   if(!s){alert('Please select your position in the family to begin.');return;}
-  sib=s.value;showScreen('test');renderQ();
+  sib=s.value;
+  submissionMeta={id:'',stored:false};
+  showScreen('test');renderQ();
 }
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -456,7 +459,7 @@ function renderQ(){
   document.getElementById('progCount').textContent=(cur+1)+' / '+QS.length;
   document.getElementById('qCtr').textContent='Question '+(cur+1)+' of '+QS.length;
   document.getElementById('btnBack').disabled=cur===0;
-  document.getElementById('btnNext').textContent=cur===QS.length-1?'See my results →':'Next →';
+  document.getElementById('btnNext').textContent=cur===QS.length-1?'Submit answers →':'Next →';
 
   let html='';
   if(q.type==='scene'){
@@ -549,6 +552,8 @@ function buildResults(){
   window._RD={sorted,pct,flags,sibLabel,insights};
   showScreen('results');
   setTimeout(()=>{document.querySelectorAll('.dim-bar').forEach(b=>{b.style.width=b.dataset.w+'%';});},150);
+  if(!submissionMeta.id) submissionMeta.id=`sub_${Date.now()}_${Math.random().toString(36).slice(2,10)}`;
+  if(!submissionMeta.stored) autoSubmitResults();
 }
 
 function calcFlags(){
@@ -603,23 +608,30 @@ function deriveInsights(pct,flags,sibKey){
   const pushPattern=(name,condition)=>{
     if(condition && !toxicPatterns.includes(name)) toxicPatterns.push(name);
   };
-  pushPattern('Approval-driven decisions',(pct.approval||0)>=55);
-  pushPattern('Conflict shutdown',(pct.conflict_avoid||0)>=55);
-  pushPattern('Over-functioning for others',(pct.martyrdom||0)>=50||(pct.identity_usefulness||0)>=50);
-  pushPattern('Family-role carryover',(pct.enmeshment||0)>=50);
-  pushPattern('Control as safety',(pct.control||0)>=55);
-  pushPattern('Withdrawal under stress',(pct.withdrawal||0)>=55);
-  pushPattern('High guilt load',(pct.guilt||0)>=60);
+  pushPattern('Helping to earn love',(pct.martyrdom||0)>=40&&(pct.identity_usefulness||0)>=35);
+  pushPattern('Approval-driven decisions',(pct.approval||0)>=45);
+  pushPattern('Conflict shutdown',(pct.conflict_avoid||0)>=45);
+  pushPattern('Over-functioning for others',(pct.martyrdom||0)>=40||(pct.identity_usefulness||0)>=40);
+  pushPattern('Family-role carryover',(pct.enmeshment||0)>=40);
+  pushPattern('Control as safety',(pct.control||0)>=45);
+  pushPattern('Withdrawal under stress',(pct.withdrawal||0)>=45);
+  pushPattern('High guilt load',(pct.guilt||0)>=50);
+  pushPattern('Difficulty asking directly for needs',(pct.self_advocacy||0)<=35);
+  pushPattern('Self-worth tied to being needed',(pct.identity_usefulness||0)>=40);
 
   const commonExperiences=[];
   const pushExperience=(label,condition)=>{
     if(condition && !commonExperiences.includes(label)) commonExperiences.push(label);
   };
-  pushExperience('Often felt responsible for other people’s emotional state',(pct.guilt||0)>=55||(pct.mediator||0)>=55);
-  pushExperience('Learned early that being useful kept you connected',(pct.identity_usefulness||0)>=45||(pct.martyrdom||0)>=45);
-  pushExperience('Family approval still carries emotional weight',(pct.approval||0)>=45);
-  pushExperience('Silence felt safer than direct expression',(pct.withdrawal||0)>=45||(pct.conflict_avoid||0)>=45);
-  pushExperience('Childhood family role still shows up in adult relationships',(pct.enmeshment||0)>=45);
+  pushExperience('Often felt responsible for other people’s emotional state',(pct.guilt||0)>=45||(pct.mediator||0)>=45);
+  pushExperience('Learned early that being useful kept you connected',(pct.identity_usefulness||0)>=35||(pct.martyrdom||0)>=40);
+  pushExperience('Helping can feel like the safest way to stay loved',(pct.martyrdom||0)>=40&&(pct.identity_usefulness||0)>=35);
+  pushExperience('Family approval still carries emotional weight',(pct.approval||0)>=40);
+  pushExperience('Silence felt safer than direct expression',(pct.withdrawal||0)>=40||(pct.conflict_avoid||0)>=40);
+  pushExperience('Childhood family role still shows up in adult relationships',(pct.enmeshment||0)>=40);
+  pushExperience('Asking directly for what you need can feel risky or uncomfortable',(pct.self_advocacy||0)<=35);
+  pushExperience('Taking charge can feel safer than relying on other people',(pct.control||0)>=45);
+  pushExperience('Guilt can arrive quickly even when you have done nothing wrong',(pct.guilt||0)>=50);
   pushExperience('Receiving care can feel harder than giving it',(flags.some(f=>f.name==='Difficulty receiving care')));
   pushExperience('Achievement can become a way to secure love or recognition',(flags.some(f=>f.name==='Unresolved family approval hunger')));
   pushExperience('Helping can slide into over-responsibility',(flags.some(f=>f.name==='Control through helpfulness')||flags.some(f=>f.name==='Identity built on usefulness')));
@@ -634,9 +646,32 @@ function deriveInsights(pct,flags,sibKey){
   };
   pushExperience(siblingExperiences[sibKey],Boolean(siblingExperiences[sibKey]));
 
+  if(commonExperiences.length < 4){
+    Object.keys(pct)
+      .sort((a,b)=>(pct[b]||0)-(pct[a]||0))
+      .forEach(key=>{
+        const fallbackByDim={
+          martyrdom:'You may over-give before noticing your own resentment.',
+          approval:'Recognition from other people can strongly shape how settled you feel.',
+          conflict_avoid:'You may delay difficult conversations even when something matters.',
+          control:'You may feel calmer when you can shape outcomes yourself.',
+          identity_usefulness:'Being needed can feel central to your sense of worth.',
+          enmeshment:'Older family roles can still pull you back into familiar reactions.',
+          awareness:'Part of your growth may involve noticing gaps between intention and impact.',
+          guilt:'You may carry guilt faster and longer than the situation requires.',
+          withdrawal:'When things feel intense, distance can feel safer than staying present.',
+          mediator:'You may end up managing tension between other people.',
+          self_advocacy:'Learning to name your needs clearly may be an important growth edge.',
+          secure:'You show signs of steadiness even under interpersonal pressure.',
+          entitlement:'You may feel especially sensitive to not being recognised or prioritised.'
+        };
+        pushExperience(fallbackByDim[key],Boolean(fallbackByDim[key]));
+      });
+  }
+
   return{
     strengths: strengthPool,
-    toxicPatterns,
+    toxicPatterns: toxicPatterns.slice(0,8),
     commonExperiences: commonExperiences.slice(0,8)
   };
 }
@@ -699,13 +734,10 @@ ${sceneLines}
 ${lkLines}`};
 }
 
-async function submitResults(){
-  const btn=document.getElementById('btnSend'),ok=document.getElementById('sendOk'),err=document.getElementById('sendErr');
-  btn.disabled=true;btn.textContent='Submitting…';
-  ok.style.display='none';err.style.display='none';
-
+function buildPayload(emailOverride='anonymous'){
   const d=window._RD;
-  const {notes,email,report}=buildReport();
+  const {notes,report}=buildReport();
+  const email=(emailOverride||'anonymous').trim()||'anonymous';
   const topDims=d.sorted.slice(0,5).map(k=>DIMS[k].label+' ('+d.pct[k]+'%)').join(', ');
   const flagNames=d.flags.map(f=>f.name).join('; ');
   const flagDetails=d.flags.map(f=>`${f.name}: ${f.text}`).join(' || ');
@@ -726,11 +758,11 @@ async function submitResults(){
     }).join(' || ');
   }).join('\n');
 
-  // Build the payload — no name, no identifying info
   const payload={
+    "Submission ID": submissionMeta.id,
     "Sibling position": d.sibLabel,
     "Submission date":  new Date().toISOString().split('T')[0],
-    "Respondent email": email, // "anonymous" if not provided
+    "Respondent email": email,
     "Top dimensions":   topDims,
     "All dimension scores": allDimensionScores,
     "Strengths":        strengthsSummary,
@@ -742,51 +774,61 @@ async function submitResults(){
     "Question breakdown": questionBreakdown,
     "Full report":      report
   };
-  // Individual dimension scores
-  d.sorted.forEach(k=>{ payload[DIMS[k].label]=d.pct[k]; });
+  Object.keys(DIMS).forEach(k=>{ payload[DIMS[k].label]=d.pct[k]||0; });
+  return payload;
+}
 
-  let success=false;
+async function postPayload(payload){
   const body=new URLSearchParams({payload: JSON.stringify(payload)}).toString();
+  const response=await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: {'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+    body,
+    mode: 'cors',
+    cache: 'no-store'
+  });
+  if(!response.ok) throw new Error(`HTTP ${response.status}`);
+}
 
+async function autoSubmitResults(){
+  const ok=document.getElementById('sendOk'),err=document.getElementById('sendErr');
+  ok.style.display='none';err.style.display='none';
   try{
-    // First try a normal POST so we can detect a real HTTP error if the
-    // current deployment is misconfigured or no longer public.
-    const response=await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
-      body,
-      mode: 'cors',
-      cache: 'no-store'
-    });
-    if(!response.ok) throw new Error(`HTTP ${response.status}`);
-    success=true;
+    await postPayload(buildPayload('anonymous'));
+    submissionMeta.stored=true;
+    ok.style.display='block';
+    ok.textContent='✓ Your answers have been submitted. Add an email above if you want a copy of your results.';
   }catch(e){
-    console.warn('Verified submission failed, retrying with no-cors fallback:',e);
-    try{
-      await fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        headers: {'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
-        body,
-        mode: 'no-cors',
-        cache: 'no-store',
-        keepalive: true
-      });
-      success=true;
-    }catch(fallbackError){
-      console.error('Submission error:',fallbackError);
-      success=false;
-    }
+    console.error('Automatic submission failed:',e);
+    err.style.display='block';
+    err.textContent='Automatic submission failed. Please add an email above and try the button below.';
+  }
+}
+
+async function emailResults(){
+  const btn=document.getElementById('btnSend'),ok=document.getElementById('sendOk'),err=document.getElementById('sendErr');
+  const email=document.getElementById('emailInput').value.trim();
+  if(!email){
+    ok.style.display='none';
+    err.style.display='block';
+    err.textContent='Add your email above if you want a copy of your results.';
+    return;
   }
 
-  if(success){
+  btn.disabled=true;btn.textContent='Sending…';
+  ok.style.display='none';err.style.display='none';
+
+  try{
+    await postPayload(buildPayload(email));
     ok.style.display='block';
-    ok.textContent='✓ Submitted. Thank you for participating.'+(email&&email!=='anonymous'?' A copy of your results has been sent to your email.':'');
-    btn.textContent='Submitted ✓';
-  }else{
+    ok.textContent='✓ Your results have been sent to your email address.';
+    btn.textContent='Email sent ✓';
+  }catch(e){
+    console.error('Email submission failed:',e);
     btn.disabled=false;
-    btn.textContent='Try again';
+    btn.textContent='Email me my results';
     err.style.display='block';
-    err.textContent='Submission failed. Please screenshot your results and send them to contact@eliseluneau.com';
+    err.textContent='We could not send the email. Please try again.';
   }
 }
 </script>
