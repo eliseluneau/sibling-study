@@ -485,7 +485,7 @@ function renderQ(){
         const saved=likertAns[st.id]?.v??null;
         return`<div class="likert-item">
           <p class="likert-stmt">${st.text}</p>
-          <div class="likert-scale">${[1,2,3,4,5].map(v=>`<label onclick="pickLikert('${st.id}',${v},${JSON.stringify(st.dims)},${JSON.stringify(st.w)},${JSON.stringify(st.dir||[])})"><input type="radio" name="${st.id}" value="${v}" ${saved===v?'checked':''}><span class="likert-pip">${v}</span></label>`).join('')}</div>
+          <div class="likert-scale">${[1,2,3,4,5].map(v=>`<label onclick="pickLikertById('${st.id}',${v})"><input type="radio" name="${st.id}" value="${v}" ${saved===v?'checked':''}><span class="likert-pip">${v}</span></label>`).join('')}</div>
           <div class="likert-ends"><span>Strongly disagree</span><span>Strongly agree</span></div>
         </div>`;
       }).join('')}
@@ -499,6 +499,19 @@ function pickScene(qid,i){
   sceneAns[qid]=i;
   document.querySelectorAll('#opts .opt').forEach((b,j)=>b.classList.toggle('sel',j===i));
   document.getElementById('btnNext').disabled=!currentQuestionAnswered();
+}
+function getStatementMeta(stId){
+  for(const q of QS){
+    if(q.type!=='likert') continue;
+    const st=q.statements.find(s=>s.id===stId);
+    if(st) return st;
+  }
+  return null;
+}
+function pickLikertById(stId,v){
+  const st=getStatementMeta(stId);
+  if(!st) return;
+  pickLikert(stId,v,st.dims,st.w,st.dir||[]);
 }
 function pickLikert(stId,v,dims,ws,dir=[]){
   likertAns[stId]={v,dims,ws,dir};
