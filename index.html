@@ -498,9 +498,9 @@ function buildResults(){
   Object.keys(DIMS).forEach(d=>{scores[d]=0;maxP[d]=0;});
 
   QS.filter(q=>q.type==='scene').forEach(q=>{
-    const maxW=Math.max(...q.w);
-    const dmx=q.dims[q.w.indexOf(maxW)];
-    if(DIMS[dmx])maxP[dmx]+=maxW;
+    q.dims.forEach((dim,idx)=>{
+      if(DIMS[dim]) maxP[dim]+=(q.w[idx]||0);
+    });
     const c=sceneAns[q.id]??null;if(c===null)return;
     const dim=q.dims[c];if(DIMS[dim])scores[dim]+=q.w[c];
   });
