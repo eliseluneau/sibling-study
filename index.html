@@ -221,6 +221,9 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzw-KLVUK6R7vMX
 
 // ── QUESTION DATA ─────────────────────────────────────────────
 const QS=[
+  // Direction audit changes:
+  // - L02: added dir:[-1,-1] because agreeing indicates healthier self-advocacy
+  //   and greater ease receiving support, not a higher pathology score.
   {id:0,type:"scene",sec:"Effort & recognition",
    scene:"You spend three weekends helping a close friend through a difficult move — packing, logistics, heavy lifting, emotional support. A month later, at dinner with mutual friends, they say: 'It was chaos but I basically just powered through it alone.' Everyone nods.",
    stem:"You:",
@@ -236,7 +239,7 @@ const QS=[
   {id:2,type:"likert",sec:"Quick check-in",
    statements:[
      {id:"L01",text:"I often feel more responsible for other people's comfort than they are for mine.",dims:["martyrdom","enmeshment"],w:[8,6]},
-     {id:"L02",text:"I find it easy to ask for help when I genuinely need it.",dims:["self_advocacy","secure"],w:[7,5]},
+     {id:"L02",text:"I find it easy to ask for help when I genuinely need it.",dims:["self_advocacy","secure"],w:[7,5],dir:[-1,-1]},
      {id:"L03",text:"I can relax fully without feeling I should be doing something useful.",dims:["identity_usefulness","guilt"],w:[8,7],dir:[-1,-1]},
    ]},
 
@@ -468,7 +471,7 @@ function renderQ(){
   document.getElementById('qCtr').textContent='Question '+(cur+1)+' of '+QS.length;
   document.getElementById('btnBack').disabled=cur===0;
   document.getElementById('btnNext').textContent=cur===QS.length-1?'Submit my results →':'Next →';
-  document.getElementById('btnNext').disabled=!currentQuestionAnswered();
+  document.getElementById('btnNext').disabled=false;
 
   let html='';
   if(q.type==='scene'){
@@ -498,7 +501,6 @@ function renderQ(){
 function pickScene(qid,i){
   sceneAns[qid]=i;
   document.querySelectorAll('#opts .opt').forEach((b,j)=>b.classList.toggle('sel',j===i));
-  document.getElementById('btnNext').disabled=!currentQuestionAnswered();
 }
 function getStatementMeta(stId){
   for(const q of QS){
@@ -520,7 +522,6 @@ function pickLikert(stId,v,dims,ws,dir=[]){
     el.style.outline='';
     el.style.borderRadius='';
   }
-  document.getElementById('btnNext').disabled=!currentQuestionAnswered();
 }
 
 function currentQuestionAnswered(){
@@ -568,6 +569,16 @@ async function goNext(){
 function goBack(){if(cur>0){cur--;renderQ();}}
 
 // ── SCORING ───────────────────────────────────────────────────
+function likertAgreementWeight(v){
+  const scale={1:0,2:0.25,3:0.5,4:0.75,5:1};
+  return scale[v] ?? 0;
+}
+
+function likertDimensionWeight(v,direction=1){
+  const agreeWeight=likertAgreementWeight(v);
+  return direction===-1 ? 1-agreeWeight : agreeWeight;
+}
+
 async function buildResults(){
   const scores={},maxP={};
   Object.keys(DIMS).forEach(d=>{scores[d]=0;maxP[d]=0;});
@@ -590,7 +601,7 @@ async function buildResults(){
       if(!DIMS[dim])return;
       const wt=ws[di]||5;
       const direction=dir[di]===-1?-1:1;
-      const normalized=direction===-1?((5-v)/4):((v-1)/4);
+      const normalized=likertDimensionWeight(v,direction);
       scores[dim]+=normalized*wt;
       maxP[dim]+=wt;
     });
@@ -637,7 +648,7 @@ async function buildResults(){
     }else{
       return q.statements.map(st=>{
         const sv=likertAns[st.id],di=st.dims[0]&&DIMS[st.dims[0]]?DIMS[st.dims[0]]:null;
-        return`<tr><td style="color:var(--muted-light);white-space:nowrap;font-size:11px">Q${i+1}</td><td style="font-style:italic">"${st.text.substring(0,65)}…"</td><td>${di?`<span class="dtag" style="background:${di.col}22;color:${di.col}">${di.label}</span>`:'—'}</td><td style="color:var(--muted)">${sv?sv.v+'/5':'—'}</td></tr>`;
+        return`<tr><td style="color:var(--muted-light);white-space:nowrap;font-size:11px">Q${i+1}</td><td style="font-style:italic">"${st.text.substring(0,65)}…"</td><td>${di?`<span class="dtag" style="background:${di.col}22;color:${di.col}">${di.label}</span>`:'—'}</td><td style="color:var(--muted)">${formatLikertAnswer(st,sv)}</td></tr>`;
       }).join('');
     }
   }).join('');
@@ -751,6 +762,7 @@ function calcFlags(pct={},responseStyle={guardedness:0}){
 
 function calcResponseStyle(rawPct){
   const sa=k=>sceneAns[k]??null,lv=id=>likertAns[id]?.v??null;
+  const lvAgree=id=>likertAgreementWeight(lv(id));
   const adjustments={};
   const notes=[];
   const apply=(dim,delta)=>{
@@ -774,47 +786,47 @@ function calcResponseStyle(rawPct){
     note('Repeated middle responses suggest some parts of the self-report may be more obscured than absent.');
   }
 
-  if((lv('L02')>=4) && ((sa(16)===0||sa(16)===3)||lv('L22')>=4||lv('L01')>=4)){
+  if((lvAgree('L02')>=0.75) && ((sa(16)===0||sa(16)===3)||lvAgree('L22')>=0.75||lvAgree('L01')>=0.75)){
     guardedness++;
     apply('martyrdom',10); apply('self_advocacy',-6); apply('awareness',4);
     note('Direct claims of self-advocacy were softer than the caregiving and depletion pattern.');
   }
-  if((lv('L04')>=4) && ((sa(4)===1||sa(4)===2||sa(4)===4)||lv('L24')>=4)){
+  if((lvAgree('L04')>=0.75) && ((sa(4)===1||sa(4)===2||sa(4)===4)||lvAgree('L24')>=0.75)){
     guardedness++;
     apply('conflict_avoid',10); apply('self_advocacy',-5); apply('awareness',4);
     note('Direct conflict answers were more polished than the relational scenarios.');
   }
-  if((lv('L12')>=4) && (lv('L11')>=4||sa(10)===1||sa(10)===4||rawPct.approval>=45)){
+  if((lvAgree('L12')>=0.75) && (lvAgree('L11')>=0.75||sa(10)===1||sa(10)===4||rawPct.approval>=45)){
     guardedness++;
     apply('approval',10); apply('secure',-4); apply('awareness',3);
     note('Need for external reassurance appears stronger indirectly than it was stated directly.');
   }
-  if((lv('L15')>=4) && (lv('L13')>=4||sa(13)===0||sa(13)===1||sa(13)===3||rawPct.enmeshment>=45)){
+  if((lvAgree('L15')>=0.75) && (lvAgree('L13')>=0.75||sa(13)===0||sa(13)===1||sa(13)===3||rawPct.enmeshment>=45)){
     guardedness++;
     apply('enmeshment',10); apply('secure',-4); apply('awareness',3);
     note('Reported distance from family role conflicts with how responsibility shows up elsewhere.');
   }
-  if((lv('L17')>=4) && (lv('L16')>=4||sa(15)===0||sa(15)===3||rawPct.guilt>=45)){
+  if((lvAgree('L17')>=0.75) && (lvAgree('L16')>=0.75||sa(15)===0||sa(15)===3||rawPct.guilt>=45)){
     guardedness++;
     apply('guilt',9); apply('secure',-4); apply('awareness',3);
     note('Direct claims of moving on quickly clash with the guilt pattern across other answers.');
   }
-  if((lv('L19')>=4) && (sa(26)===0||sa(26)===3||sa(29)===1||rawPct.identity_usefulness>=40)){
+  if((lvAgree('L19')>=0.75) && (sa(26)===0||sa(26)===3||sa(29)===1||rawPct.identity_usefulness>=40)){
     guardedness++;
     apply('identity_usefulness',10); apply('awareness',4);
     note('The profile suggests identity is more tied to usefulness than the direct item admitted.');
   }
-  if((lv('L21')>=4) && (lv('L18')>=4||lv('L11')>=4||rawPct.approval>=45)){
+  if((lvAgree('L21')>=0.75) && (lvAgree('L18')>=0.75||lvAgree('L11')>=0.75||rawPct.approval>=45)){
     guardedness++;
     apply('approval',8); apply('awareness',4);
     note('Tolerance for imperfection appears lower in the indirect material than in the direct self-rating.');
   }
-  if((lv('L23')>=4) && ((sa(22)===1||sa(22)===4)||rawPct.withdrawal>=40)){
+  if((lvAgree('L23')>=0.75) && ((sa(22)===1||sa(22)===4)||rawPct.withdrawal>=40)){
     guardedness++;
     apply('awareness',6); apply('withdrawal',5);
     note('Ease with receiving care appears overstated relative to the attachment responses.');
   }
-  if((lv('L25')>=4) && (lv('L26')>=4||sa(24)===4||rawPct.approval>=45)){
+  if((lvAgree('L25')>=0.75) && (lvAgree('L26')>=0.75||sa(24)===4||rawPct.approval>=45)){
     guardedness++;
     apply('approval',8); apply('martyrdom',6); apply('self_advocacy',-4);
     note('Self-promotion looked easier in the direct item than in the recognition scenarios.');
@@ -838,6 +850,27 @@ function clampPct(v){
 
 function spreadPct(x){
   return Math.round(Math.pow(x/100,0.72)*100);
+}
+
+function likertResponseText(v){
+  const map={
+    1:'strongly disagree',
+    2:'disagree',
+    3:'neutral',
+    4:'agree',
+    5:'strongly agree'
+  };
+  return map[v]||`${v}/5`;
+}
+
+function isReverseScored(st){
+  return Array.isArray(st?.dir) && st.dir.some(v=>v===-1);
+}
+
+function formatLikertAnswer(st,sv){
+  if(!sv) return '(skipped)';
+  const base=`${sv.v}/5 (${likertResponseText(sv.v)})`;
+  return isReverseScored(st)?`${base}, reverse-scored` : base;
 }
 
 function inv(pct,key){
@@ -1094,7 +1127,7 @@ function buildReport(){
   }).join('\n\n');
   const lkLines=QS.filter(q=>q.type==='likert').flatMap(q=>q.statements).map(st=>{
     const sv=likertAns[st.id];
-    return`"${st.text}" → ${sv?sv.v+'/5':'(skipped)'}`;
+    return`"${st.text}" → ${formatLikertAnswer(st,sv)}`;
   }).join('\n');
   return{notes,email,report:`BIRTH ORDER BEHAVIOUR TEST — FULL RESULTS
 ==========================================
@@ -1155,7 +1188,7 @@ function buildPayload(emailOverride='anonymous'){
     return q.statements.map(st=>{
       const sv=likertAns[st.id];
       const dim=st.dims[0]&&DIMS[st.dims[0]]?DIMS[st.dims[0]].label:'—';
-      return `Q${i+1} "${st.text}" [${dim}] -> ${sv?sv.v+'/5':'(skipped)'}`;
+      return `Q${i+1} "${st.text}" [${dim}] -> ${formatLikertAnswer(st,sv)}`;
     }).join(' || ');
   }).join('\n');
 
