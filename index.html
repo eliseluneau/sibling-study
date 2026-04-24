@@ -201,7 +201,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
         <input class="email-input" type="email" id="emailInput" placeholder="your@email.com" autocomplete="email">
       </div>
       <div class="notes-cta">
-        <button class="btn-notes-save" id="btnNotesSave" onclick="submitNotesUpdate()">Add this to my response</button>
+        <button class="btn-notes-save" id="btnNotesSave" onclick="submitNotesUpdate()">Save note / send my results</button>
         <span class="notes-save-msg" id="notesSaveMsg"></span>
       </div>
     </div>
@@ -1259,7 +1259,7 @@ async function submitNotesUpdate(){
   const email=document.getElementById('emailInput').value.trim()||'anonymous';
 
   if(!notes && email==='anonymous'){
-    msg.textContent='Add a note or an email before saving.';
+    msg.textContent='Add a note or an email, then tap the button to save and send.';
     msg.className='notes-save-msg err';
     msg.style.display='inline';
     return;
@@ -1271,7 +1271,9 @@ async function submitNotesUpdate(){
 
   try{
     await postPayload(buildPayload(email));
-    msg.textContent='Saved. Your note was sent with your response.';
+    msg.textContent=email==='anonymous'
+      ? 'Saved. Your note was added to your response.'
+      : 'Saved. Your note was added and your results were sent by email.';
     msg.className='notes-save-msg ok';
     msg.style.display='inline';
   }catch(e){
@@ -1281,7 +1283,7 @@ async function submitNotesUpdate(){
     msg.style.display='inline';
   }finally{
     btn.disabled=false;
-    btn.textContent='Add this to my response';
+    btn.textContent='Save note / send my results';
   }
 }
 </script>
