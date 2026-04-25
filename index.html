@@ -131,6 +131,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 .notes-save-msg{font-size:12px;line-height:1.6;color:var(--muted);display:none}
 .notes-save-msg.ok{color:#1d9e75}
 .notes-save-msg.err{color:#c04a3a}
+.email-block{margin-top:18px;padding-top:18px;border-top:1px solid var(--border)}
+.email-cta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px}
+.email-save-msg{font-size:12px;line-height:1.6;color:var(--muted);display:none}
+.email-save-msg.ok{color:#1d9e75}
+.email-save-msg.err{color:#c04a3a}
 .send-block{margin-top:32px;background:var(--ink);border-radius:2px;padding:28px}
 .send-title{font-family:'Libre Baskerville',serif;font-size:18px;font-weight:400;color:var(--paper);margin-bottom:8px}
 .send-body{font-size:13px;color:rgba(245,240,232,0.65);line-height:1.7;margin-bottom:18px}
@@ -194,15 +199,20 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 
     <span class="sec-div">Anything to add?</span>
     <div class="notes-block">
-      <label for="extraNotes">If something came up while doing the test — a reaction, a memory, a nuance your answers didn't capture — write it here. Optional.</label>
+      <label for="extraNotes">If something came up while doing the test — a reaction, a memory, or anything your answers did not quite capture — write it here.</label>
       <textarea class="notes-textarea" id="extraNotes" placeholder="Write freely…"></textarea>
-      <div class="email-group">
+      <div class="notes-cta">
+        <button class="btn-notes-save" id="btnNotesSave" onclick="submitNotesUpdate()">Save note</button>
+        <span class="notes-save-msg" id="notesSaveMsg"></span>
+      </div>
+
+      <div class="email-block">
         <label for="emailInput">Receive your results by email (optional — stays anonymous)</label>
         <input class="email-input" type="email" id="emailInput" placeholder="your@email.com" autocomplete="email">
-      </div>
-      <div class="notes-cta">
-        <button class="btn-notes-save" id="btnNotesSave" onclick="submitNotesUpdate()">Save note / send my results</button>
-        <span class="notes-save-msg" id="notesSaveMsg"></span>
+        <div class="email-cta">
+          <button class="btn-notes-save" id="btnEmailSend" onclick="submitEmailRequest()">Send email</button>
+          <span class="email-save-msg" id="emailSaveMsg"></span>
+        </div>
       </div>
     </div>
 
@@ -642,7 +652,7 @@ async function buildResults(){
   const insights=deriveInsights(pct,flags,sib,responseStyle);
 
   document.getElementById('resEyebrow').textContent=sibLabel;
-  document.getElementById('resSub').textContent='Derived from how you said you would behave across '+QS.length+' questions. The patterns below were invisible during the test.';
+  document.getElementById('resSub').textContent='This profile pulls together the main tendencies your answers clustered around across '+QS.length+' questions. Some themes below are direct scores; others are inferred patterns that emerge only when several answers point in the same direction.';
 
   document.getElementById('dimContainer').innerHTML=sorted.map((d,i)=>{
     const tier=tierMeta(pct[d]);
@@ -683,7 +693,7 @@ async function generateSummary(sorted,pct,flags,sibLabel,sib){
   block.innerHTML='<p style="font-size:13px;color:var(--muted-light);font-style:italic">Reading your answers…</p>';
 
   if(!ANTHROPIC_API_KEY){
-    block.innerHTML='';
+    block.innerHTML=`<p style="font-family:'Libre Baskerville',serif;font-size:16px;line-height:1.85;color:var(--ink);padding:4px 0 8px">${buildLocalSummary(sorted,pct,flags,sibLabel,sib)}</p>`;
     return;
   }
 
@@ -715,11 +725,20 @@ Write the summary now. No preamble.`;
     const text=data.content?.find(b=>b.type==='text')?.text || '';
     block.innerHTML=text.trim()
       ? `<p style="font-family:'Libre Baskerville',serif;font-size:16px;line-height:1.85;color:var(--ink);padding:4px 0 8px">${text.trim()}</p>`
-      : '';
+      : `<p style="font-family:'Libre Baskerville',serif;font-size:16px;line-height:1.85;color:var(--ink);padding:4px 0 8px">${buildLocalSummary(sorted,pct,flags,sibLabel,sib)}</p>`;
   }catch(e){
-    block.innerHTML='';
+    block.innerHTML=`<p style="font-family:'Libre Baskerville',serif;font-size:16px;line-height:1.85;color:var(--ink);padding:4px 0 8px">${buildLocalSummary(sorted,pct,flags,sibLabel,sib)}</p>`;
     console.error('Summary generation failed:', e);
   }
+}
+
+function buildLocalSummary(sorted,pct,flags,sibLabel,sib){
+  const top=sorted.slice(0,3).map(k=>DIMS[k].label.toLowerCase());
+  const topText=top.length===1 ? top[0] : `${top.slice(0,-1).join(', ')} and ${top[top.length-1]}`;
+  const namedFlags=flags.filter(f=>!f.name.startsWith('No strong')).slice(0,2).map(f=>f.name.toLowerCase());
+  const familyText=(pct.enmeshment||0)>35 ? ' Family context still seems to carry noticeable emotional weight in how you respond.' : '';
+  const flagText=namedFlags.length ? ` Themes like ${namedFlags.join(' and ')} sit underneath the more obvious scores.` : '';
+  return `You read as someone whose behaviour is shaped most strongly by ${topText}. You seem more likely to manage tension through a particular role or coping style than to respond from a completely neutral baseline.${flagText}${familyText}`;
 }
 
 function calcFlags(pct={},responseStyle={guardedness:0}){
@@ -1281,21 +1300,46 @@ function buildPayload(emailOverride='anonymous'){
   return payload;
 }
 
-async function postPayload(payload){
+async function postPayload(payload,{allowOpaqueFallback=false}={}){
   const body=new URLSearchParams({payload: JSON.stringify(payload)}).toString();
-  const response=await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: {'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
-    body,
-    mode: 'cors',
-    cache: 'no-store'
-  });
-  if(!response.ok) throw new Error(`HTTP ${response.status}`);
+  try{
+    const response=await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+      body,
+      mode: 'cors',
+      cache: 'no-store'
+    });
+    if(!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    let data=null;
+    const contentType=response.headers.get('content-type')||'';
+    if(contentType.includes('application/json')){
+      data=await response.json();
+    }else{
+      const text=await response.text();
+      try{ data=JSON.parse(text); }catch(_){ data=null; }
+    }
+    if(data && data.status && data.status!=='ok'){
+      throw new Error(data.message || 'Script returned an error');
+    }
+    return {status:data?.status || 'ok', data};
+  }catch(err){
+    if(!allowOpaqueFallback) throw err;
+    await fetch(APPS_SCRIPT_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+      body,
+      mode:'no-cors',
+      cache:'no-store'
+    });
+    return {status:'opaque'};
+  }
 }
 
 async function autoSubmitResults(){
   try{
-    await postPayload(buildPayload('anonymous'));
+    await postPayload(buildPayload('anonymous'),{allowOpaqueFallback:true});
     submissionMeta.stored=true;
   }catch(e){
     console.error('Automatic submission failed:',e);
@@ -1306,10 +1350,9 @@ async function submitNotesUpdate(){
   const btn=document.getElementById('btnNotesSave');
   const msg=document.getElementById('notesSaveMsg');
   const notes=document.getElementById('extraNotes').value.trim();
-  const email=document.getElementById('emailInput').value.trim()||'anonymous';
 
-  if(!notes && email==='anonymous'){
-    msg.textContent='Add a note or an email, then tap the button to save and send.';
+  if(!notes){
+    msg.textContent='Write a note before saving.';
     msg.className='notes-save-msg err';
     msg.style.display='inline';
     return;
@@ -1320,10 +1363,8 @@ async function submitNotesUpdate(){
   msg.style.display='none';
 
   try{
-    await postPayload(buildPayload(email));
-    msg.textContent=email==='anonymous'
-      ? 'Saved. Your note was added to your response.'
-      : 'Saved. Your note was added and your results were sent by email.';
+    await postPayload(buildPayload('anonymous'),{allowOpaqueFallback:true});
+    msg.textContent='Saved. Your note was added to your response.';
     msg.className='notes-save-msg ok';
     msg.style.display='inline';
   }catch(e){
@@ -1333,7 +1374,41 @@ async function submitNotesUpdate(){
     msg.style.display='inline';
   }finally{
     btn.disabled=false;
-    btn.textContent='Save note / send my results';
+    btn.textContent='Save note';
+  }
+}
+
+async function submitEmailRequest(){
+  const btn=document.getElementById('btnEmailSend');
+  const msg=document.getElementById('emailSaveMsg');
+  const email=document.getElementById('emailInput').value.trim();
+
+  if(!email){
+    msg.textContent='Add your email before sending.';
+    msg.className='email-save-msg err';
+    msg.style.display='inline';
+    return;
+  }
+
+  btn.disabled=true;
+  btn.textContent='Sending…';
+  msg.style.display='none';
+
+  try{
+    const result=await postPayload(buildPayload(email),{allowOpaqueFallback:true});
+    msg.textContent=result.status==='ok'
+      ? 'Email request sent. Check your inbox and spam folder.'
+      : 'Email request sent. If nothing arrives, the Apps Script mail step still needs fixing.';
+    msg.className='email-save-msg ok';
+    msg.style.display='inline';
+  }catch(e){
+    console.error('Email request failed:',e);
+    msg.textContent='Could not send the email request right now.';
+    msg.className='email-save-msg err';
+    msg.style.display='inline';
+  }finally{
+    btn.disabled=false;
+    btn.textContent='Send email';
   }
 }
 </script>
