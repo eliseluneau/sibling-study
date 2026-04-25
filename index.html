@@ -206,6 +206,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
       </div>
     </div>
 
+    <span class="sec-div" id="summaryDivider" style="border-top:none;margin-top:0;padding-top:0">Reading</span>
+    <div id="summaryBlock" style="min-height:80px"></div>
+
     <span class="sec-div">Dimension scores</span>
     <div id="dimContainer"></div>
 
@@ -226,6 +229,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 // (see SETUP.md for instructions)
 // ══════════════════════════════════════════════════════════════
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzw-KLVUK6R7vMXz5GqOX0oyq1AiwSIY63u5ozaaJPpi_ayKiQVuEBXVkaYdyL-BwGavg/exec";
+const ANTHROPIC_API_KEY = window.ANTHROPIC_API_KEY || "";
 // ══════════════════════════════════════════════════════════════
 
 
@@ -668,8 +672,54 @@ async function buildResults(){
   window._RD={sorted,pct,flags,sibLabel,insights,responseStyle};
   if(!submissionMeta.id) submissionMeta.id=`sub_${Date.now()}_${Math.random().toString(36).slice(2,10)}`;
   if(!submissionMeta.stored) await autoSubmitResults();
+  await generateSummary(sorted,pct,flags,sibLabel,sib);
   showScreen('results');
   setTimeout(()=>{document.querySelectorAll('.dim-bar').forEach(b=>{b.style.width=b.dataset.w+'%';});},150);
+}
+
+async function generateSummary(sorted,pct,flags,sibLabel,sib){
+  const block=document.getElementById('summaryBlock');
+  if(!block) return;
+  block.innerHTML='<p style="font-size:13px;color:var(--muted-light);font-style:italic">Reading your answers…</p>';
+
+  if(!ANTHROPIC_API_KEY){
+    block.innerHTML='';
+    return;
+  }
+
+  const topDims=sorted.slice(0,4).map(k=>`${DIMS[k].label} (${pct[k]}%)`).join(', ');
+  const flagNames=flags.filter(f=>!f.name.startsWith('No strong')).map(f=>f.name).join(', ');
+  const familyScore=pct['enmeshment']||0;
+
+  const prompt=`You are writing a short, direct behavioural summary for someone who just completed a psychological pattern test. Write 3–4 sentences maximum. Do not use bullet points, headers, or lists. Do not be generic. Do not say "your results show" or "based on your answers". Write in second person, present tense. Be psychologically precise but human. Mention the family context only if enmeshment score is above 35.
+
+The person is a ${sibLabel}. Their dominant dimensions are: ${topDims}. Their pattern flags are: ${flagNames || 'none'}. Family enmeshment score: ${familyScore}%.
+
+Write the summary now. No preamble.`;
+
+  try{
+    const response=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version":"2023-06-01"
+      },
+      body:JSON.stringify({
+        model:"claude-sonnet-4-20250514",
+        max_tokens:1000,
+        messages:[{role:"user",content:prompt}]
+      })
+    });
+    const data=await response.json();
+    const text=data.content?.find(b=>b.type==='text')?.text || '';
+    block.innerHTML=text.trim()
+      ? `<p style="font-family:'Libre Baskerville',serif;font-size:16px;line-height:1.85;color:var(--ink);padding:4px 0 8px">${text.trim()}</p>`
+      : '';
+  }catch(e){
+    block.innerHTML='';
+    console.error('Summary generation failed:', e);
+  }
 }
 
 function calcFlags(pct={},responseStyle={guardedness:0}){
