@@ -238,7 +238,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 // CONFIG — paste your Google Apps Script Web App URL here
 // (see SETUP.md for instructions)
 // ══════════════════════════════════════════════════════════════
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwMJYY-PmozBgJ98VOPsw69SxW9fU9ENpQa64J6PLKGwRbinkv0fjjLj2nugt2RUiSwSA/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyN-jiew3lR2M-187qteg-UtBaJ22glYA9iWrn4Wl5uDBFNtx-hQ-qg2szeWklMagb82A/exec";
 const ANTHROPIC_API_KEY = window.ANTHROPIC_API_KEY || "";
 // ══════════════════════════════════════════════════════════════
 
@@ -691,9 +691,11 @@ async function generateSummary(sorted,pct,flags,sibLabel,sib){
   const block=document.getElementById('summaryBlock');
   if(!block) return;
   block.innerHTML='<p style="font-size:13px;color:var(--muted-light);font-style:italic">Reading your answers…</p>';
+  const fallbackSummary=buildLocalSummary(sorted,pct,flags,sibLabel,sib);
 
   if(!ANTHROPIC_API_KEY){
-    block.innerHTML=`<p style="font-family:'Libre Baskerville',serif;font-size:16px;line-height:1.85;color:var(--ink);padding:4px 0 8px">${buildLocalSummary(sorted,pct,flags,sibLabel,sib)}</p>`;
+    if(window._RD) window._RD.summaryText=fallbackSummary;
+    block.innerHTML=`<p style="font-family:'Libre Baskerville',serif;font-size:16px;line-height:1.85;color:var(--ink);padding:4px 0 8px">${fallbackSummary}</p>`;
     return;
   }
 
@@ -723,11 +725,12 @@ Write the summary now. No preamble.`;
     });
     const data=await response.json();
     const text=data.content?.find(b=>b.type==='text')?.text || '';
-    block.innerHTML=text.trim()
-      ? `<p style="font-family:'Libre Baskerville',serif;font-size:16px;line-height:1.85;color:var(--ink);padding:4px 0 8px">${text.trim()}</p>`
-      : `<p style="font-family:'Libre Baskerville',serif;font-size:16px;line-height:1.85;color:var(--ink);padding:4px 0 8px">${buildLocalSummary(sorted,pct,flags,sibLabel,sib)}</p>`;
+    const summaryText=text.trim()||fallbackSummary;
+    if(window._RD) window._RD.summaryText=summaryText;
+    block.innerHTML=`<p style="font-family:'Libre Baskerville',serif;font-size:16px;line-height:1.85;color:var(--ink);padding:4px 0 8px">${summaryText}</p>`;
   }catch(e){
-    block.innerHTML=`<p style="font-family:'Libre Baskerville',serif;font-size:16px;line-height:1.85;color:var(--ink);padding:4px 0 8px">${buildLocalSummary(sorted,pct,flags,sibLabel,sib)}</p>`;
+    if(window._RD) window._RD.summaryText=fallbackSummary;
+    block.innerHTML=`<p style="font-family:'Libre Baskerville',serif;font-size:16px;line-height:1.85;color:var(--ink);padding:4px 0 8px">${fallbackSummary}</p>`;
     console.error('Summary generation failed:', e);
   }
 }
@@ -1195,6 +1198,7 @@ function buildReport(){
   const d=window._RD;
   const notes=document.getElementById('extraNotes').value.trim()||'(none)';
   const email=document.getElementById('emailInput').value.trim()||'anonymous';
+  const overallSummary=(d.summaryText||buildLocalSummary(d.sorted,d.pct,d.flags,d.sibLabel,sib)).trim();
   const dimLines=d.sorted.map(k=>`  ${DIMS[k].label}: ${d.pct[k]}%\n  → ${DIMS[k].desc}`).join('\n\n');
   const flagLines=d.flags.map(f=>`[${f.name}]\n${f.text}`).join('\n\n---\n\n');
   const strengthLines=d.insights.strengths.map(s=>`  ${s.name}: ${s.score}%`).join('\n');
@@ -1214,6 +1218,10 @@ function buildReport(){
 Sibling position : ${d.sibLabel}
 Date             : ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}
 Respondent email : ${email}
+
+━━━ OVERALL READING ━━━━━━━━━━━━━━━━━━━━
+
+${overallSummary}
 
 ━━━ DIMENSION SCORES ━━━━━━━━━━━━━━━━━━
 
@@ -1252,6 +1260,7 @@ function buildPayload(emailOverride='anonymous'){
   const d=window._RD;
   const {notes,report}=buildReport();
   const email=(emailOverride||'anonymous').trim()||'anonymous';
+  const overallSummary=(d.summaryText||buildLocalSummary(d.sorted,d.pct,d.flags,d.sibLabel,sib)).trim();
   const topDims=d.sorted.slice(0,5).map(k=>DIMS[k].label+' ('+d.pct[k]+'%)').join(', ');
   const flagNames=d.flags.map(f=>f.name).join('; ');
   const flagDetails=d.flags.map(f=>`${f.name}: ${f.text}`).join(' || ');
@@ -1278,6 +1287,7 @@ function buildPayload(emailOverride='anonymous'){
     "Birth order group": sib,
     "Submission date":  new Date().toISOString().split('T')[0],
     "Respondent email": email,
+    "Overall summary": overallSummary,
     "Top dimensions":   topDims,
     "Top 3 dimensions": d.sorted.slice(0,3).map(k=>k).join(', '),
     "Dominant pattern": d.sorted[0]||'',
