@@ -703,7 +703,7 @@ async function generateSummary(sorted,pct,flags,sibLabel,sib){
   const flagNames=flags.filter(f=>!f.name.startsWith('No strong')).map(f=>f.name).join(', ');
   const familyScore=pct['enmeshment']||0;
 
-  const prompt=`You are writing a short, direct behavioural summary for someone who just completed a psychological pattern test. Write 3–4 sentences maximum. Do not use bullet points, headers, or lists. Do not be generic. Do not say "your results show" or "based on your answers". Write in second person, present tense. Be psychologically precise but human. Mention the family context only if enmeshment score is above 35.
+  const prompt=`You are writing a short, direct behavioural summary for someone who just completed a psychological pattern test. Write 3–4 sentences maximum. Do not use bullet points, headers, or lists. Do not be generic. Do not say "your results show", "based on your answers", or start with "You read as". Write in second person, present tense. Be psychologically precise, concrete, and human. Make it feel personalised to this exact pattern mix, not like a reusable template. Mention the family context only if enmeshment score is above 35.
 
 The person is a ${sibLabel}. Their dominant dimensions are: ${topDims}. Their pattern flags are: ${flagNames || 'none'}. Family enmeshment score: ${familyScore}%.
 
@@ -739,9 +739,32 @@ function buildLocalSummary(sorted,pct,flags,sibLabel,sib){
   const top=sorted.slice(0,3).map(k=>DIMS[k].label.toLowerCase());
   const topText=top.length===1 ? top[0] : `${top.slice(0,-1).join(', ')} and ${top[top.length-1]}`;
   const namedFlags=flags.filter(f=>!f.name.startsWith('No strong')).slice(0,2).map(f=>f.name.toLowerCase());
-  const familyText=(pct.enmeshment||0)>35 ? ' Family context still seems to carry noticeable emotional weight in how you respond.' : '';
-  const flagText=namedFlags.length ? ` Themes like ${namedFlags.join(' and ')} sit underneath the more obvious scores.` : '';
-  return `You read as someone whose behaviour is shaped most strongly by ${topText}. You seem more likely to manage tension through a particular role or coping style than to respond from a completely neutral baseline.${flagText}${familyText}`;
+  const strongest=sorted[0]||'';
+  const familyText=(pct.enmeshment||0)>35 ? ' Family context still seems to carry real emotional weight in how you respond, even when you would prefer to act from a more adult or neutral place.' : '';
+  const flagText=namedFlags.length ? ` Under the surface, themes like ${namedFlags.join(' and ')} seem to organise the way pressure gets managed.` : '';
+
+  if(strongest==='withdrawal'){
+    return `When tension rises, distance seems to become one of your fastest forms of self-protection, with ${topText} shaping the way you pull back, scan, or go quiet before you move outward again.${flagText}${familyText}`;
+  }
+  if(strongest==='control'){
+    return `Control seems to function less like dominance and more like a way of keeping uncertainty manageable, with ${topText} shaping how quickly you step in, take over, or try to stabilise outcomes.${flagText}${familyText}`;
+  }
+  if(strongest==='martyrdom'){
+    return `You seem to carry tension by absorbing more than you say out loud, and ${topText} shape the way effort, resentment, and responsibility start to braid together under pressure.${flagText}${familyText}`;
+  }
+  if(strongest==='approval'){
+    return `External recognition seems to land with more force than you would probably like, and ${topText} shape how closely self-trust can get tied to response, validation, or being understood correctly.${flagText}${familyText}`;
+  }
+  if(strongest==='identity_usefulness'){
+    return `Being needed seems closely tied to steadiness for you, and ${topText} shape how usefulness, value, and self-definition start to blend together under pressure.${flagText}${familyText}`;
+  }
+  if(strongest==='enmeshment'){
+    return `Family roles do not seem fully historical here; they still feel active, and ${topText} shape how easily older versions of you can reappear in present-day reactions.${flagText}${familyText}`;
+  }
+  if(strongest==='self_advocacy'){
+    return `Directness seems to matter a great deal in this profile, and ${topText} shape whether you name what is true quickly or have to work against older habits before doing it.${flagText}${familyText}`;
+  }
+  return `The clearest pattern here centres on ${topText}, and you seem more likely to manage tension through a particular role, reflex, or coping style than from a fully neutral baseline.${flagText}${familyText}`;
 }
 
 function calcFlags(pct={},responseStyle={guardedness:0}){
