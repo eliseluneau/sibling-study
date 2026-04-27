@@ -45,6 +45,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 .sib-radio:checked+.sib-card{border-color:var(--accent);background:var(--accent-light)}
 .sib-tag{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;background:var(--paper-dark);color:var(--ink);flex-shrink:0}
 .sib-name{font-size:13px;color:var(--ink)}
+.age-grid{display:grid;grid-template-columns:1fr;gap:8px;max-width:340px;margin-bottom:36px}
+.age-radio{display:none}
+.age-card{display:flex;align-items:center;padding:16px 18px;background:var(--white);border:1px solid var(--border-strong);border-radius:2px;cursor:pointer;transition:all 0.14s}
+.age-card:hover{border-color:var(--accent);background:var(--accent-light)}
+.age-radio:checked+.age-card{border-color:var(--accent);background:var(--accent-light)}
+.age-name{font-size:14px;color:var(--ink)}
 .btn-start{display:inline-flex;align-items:center;gap:10px;padding:14px 32px;background:var(--ink);color:var(--paper);border:none;border-radius:2px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;letter-spacing:0.03em;cursor:pointer;transition:background 0.15s}
 .btn-start:hover{background:var(--accent)}
 .btn-start svg{transition:transform 0.2s}
@@ -146,7 +152,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 .send-ok{color:#9dd6be;display:none}
 .send-err{color:#f5a09a;display:none}
 
-@media(max-width:520px){.sib-grid{grid-template-columns:1fr 1fr}.intro-h1{font-size:28px;margin-top:18px}.likert-scale{gap:3px}}
+@media(max-width:520px){.sib-grid{grid-template-columns:1fr 1fr}.age-grid{max-width:none}.intro-h1{font-size:28px;margin-top:18px}.likert-scale{gap:3px}}
 </style>
 </head>
 <body>
@@ -173,6 +179,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
       <input class="sib-radio" type="radio" name="sib" id="s3" value="youngest"><label class="sib-card" for="s3"><div class="sib-tag">last</div><span class="sib-name">Youngest sibling</span></label>
       <input class="sib-radio" type="radio" name="sib" id="s4" value="two_e"><label class="sib-card" for="s4"><div class="sib-tag">2/2</div><span class="sib-name">Older of two</span></label>
       <input class="sib-radio" type="radio" name="sib" id="s5" value="two_y"><label class="sib-card" for="s5"><div class="sib-tag">2/2</div><span class="sib-name">Younger of two</span></label>
+    </div>
+    <span class="sel-label">Your age range</span>
+    <div class="age-grid">
+      <input class="age-radio" type="radio" name="age" id="a0" value="Under 18"><label class="age-card" for="a0"><span class="age-name">Under 18</span></label>
+      <input class="age-radio" type="radio" name="age" id="a1" value="18-24"><label class="age-card" for="a1"><span class="age-name">18-24</span></label>
+      <input class="age-radio" type="radio" name="age" id="a2" value="25-34"><label class="age-card" for="a2"><span class="age-name">25-34</span></label>
+      <input class="age-radio" type="radio" name="age" id="a3" value="35-44"><label class="age-card" for="a3"><span class="age-name">35-44</span></label>
+      <input class="age-radio" type="radio" name="age" id="a4" value="45-54"><label class="age-card" for="a4"><span class="age-name">45-54</span></label>
+      <input class="age-radio" type="radio" name="age" id="a5" value="55-64"><label class="age-card" for="a5"><span class="age-name">55-64</span></label>
+      <input class="age-radio" type="radio" name="age" id="a6" value="65 or older"><label class="age-card" for="a6"><span class="age-name">65 or older</span></label>
     </div>
     <button class="btn-start" onclick="begin()">Begin the test <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2.5 7.5h10M8 3l4.5 4.5L8 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </div>
@@ -238,7 +254,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 // CONFIG — paste your Google Apps Script Web App URL here
 // (see SETUP.md for instructions)
 // ══════════════════════════════════════════════════════════════
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwcO46u0gZgr79z2oa8xbYNzYzFusNKU0Q9IcbhvcZe07QdDHCH2chlQefG_qtOQowdeA/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyRaPB9IM1pZ-0w0G3WntqxUILk0LY0eF_SwXWlCzvXG-Liwtjv2uwR6WTQ55Dy-pPlZg/exec";
 const ANTHROPIC_API_KEY = window.ANTHROPIC_API_KEY || "";
 // ══════════════════════════════════════════════════════════════
 
@@ -471,13 +487,16 @@ const DIMS={
   entitlement:       {label:"Entitlement signal",         col:"#F09595",desc:"Belief — conscious or not — that you are owed recognition, care, deference, or priority."}
 };
 
-let cur=0,sib='',sceneAns={},likertAns={};
+let cur=0,sib='',ageRange='',sceneAns={},likertAns={};
 let submissionMeta={id:'',stored:false};
 
 function begin(){
   const s=document.querySelector('input[name="sib"]:checked');
+  const a=document.querySelector('input[name="age"]:checked');
   if(!s){alert('Please select your position in the family to begin.');return;}
+  if(!a){alert('Please select your age range to begin.');return;}
   sib=s.value;
+  ageRange=a.value;
   submissionMeta={id:'',stored:false};
   showScreen('test');renderQ();
 }
@@ -1307,6 +1326,7 @@ function buildPayload(emailOverride='anonymous'){
   const payload={
     "Submission ID": submissionMeta.id,
     "Sibling position": d.sibLabel,
+    "Age range": ageRange,
     "Birth order group": sib,
     "Submission date":  new Date().toISOString().split('T')[0],
     "Respondent email": email,
